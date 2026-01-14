@@ -7,15 +7,27 @@ var tern (cond, if_true, if_false):{
     res
 }
 
-var !tern (cond, if_false, if_true):{
+-- var !tern (cond, if_false, if_true):{
     tern(cond, if_true, if_false)
+}
+
+var until (cond, do):{
+    var loop _
+    loop := ():{
+        cond() || {
+            do()
+            _ := loop()
+        }
+        ;
+    }
+    loop()
 }
 
 -- var <> (a, b):{
     a == b == $false
 }
 
--- var <= (a, b):{
+var <= (a, b):{
     a > b == $false
 }
 
@@ -39,6 +51,55 @@ var - (varargs...):{
             die("-() takes either 1 or 2 args")
         })
     })
+}
+
+var .. (from, to):{
+    var dispatcher (msg):{
+        tern(msg == 'from, from, {
+            tern(msg == 'to, to, {
+                die("unknown range msg: `" + msg + "`")
+            })
+        })
+    }
+    dispatcher
+}
+
+var in {
+    var Container::in (elem, container):{
+        var nth 1
+        var found $false
+        until(():{found || nth > len(container)}, ():{
+            found := container[#nth] == elem
+            nth += 1
+        })
+        found
+    }
+
+    var Range::in (elem, range):{
+        elem >= range('from) && elem <= range('to)
+    }
+
+    var in (elem, x):{
+        tern($type(x) == 'Lambda, Range::in(elem, x), {
+            Container::in(elem, x)
+        })
+    }
+
+    in
+}
+
+var !in (elem, container):{
+    in(elem, container) == $false
+}
+
+var consumeExtra (OUT input):{
+    var extras "\n" + " " + Byte(9)
+    var nth 1
+    until(():{nth > len(input) || input[#nth] !in extras}, ():{
+        nth += 1
+    })
+
+    input := tern(nth > len(input), "", input[#nth..-1])
 }
 
 var parseInt (str):{
@@ -65,14 +126,9 @@ var parseInt (str):{
 
 var consumeLineNb (OUT input):{
     var nth 1
-    var loop _
-    loop := ():{
-        nth > len(input) || input[#nth] < "0" || input[#nth] > "9" || {
-            nth += 1
-            loop()
-        }
-    }
-    loop()
+    until(():{nth > len(input) || input[#nth] !in '0 .. '9}, ():{
+        nth += 1
+    })
     
     var str tern(input == "", "", input[#1..<nth])
     input := tern(nth > len(input), "", input[#nth..-1])
