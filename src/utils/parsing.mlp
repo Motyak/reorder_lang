@@ -1,0 +1,27 @@
+include <smallstd.ml>
+
+var peekStr (input, str):{
+    len(input) >= len(str) && input[#1..len_str] == str
+}
+
+```
+    supposed to do a peekStr() before a discard()
+```
+var discard (OUT input, n):{
+    input := tern(len(input) == n, "", {
+        var n+1 n + 1
+        input[#n+1..-1]
+    })
+}
+
+var consumeStr (OUT input, str):{
+    peekStr(input, str) || die("Failed to consume `" + str + "` in `" + input + "`")
+    discard(&input, len(str))
+}
+
+var consumeOptStr (OUT input, optStr):{
+    peekStr(input, str) && {
+        discard(&input, len(str))
+    }
+    ;
+}

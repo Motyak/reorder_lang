@@ -1,5 +1,3 @@
-#!/usr/bin/env monlang
-
 var tern (cond, if_true, if_false):{
     var res _
     cond && {res := if_true}
@@ -11,19 +9,61 @@ var tern (cond, if_true, if_false):{
     tern(cond, if_true, if_false)
 }
 
-var until (cond, do):{
-    var loop _
-    loop := ():{
-        cond() || {
-            do()
-            _ := loop()
+var CaseAnalysis (pred):{
+    var end $false
+    var fn (val, do):{
+        end <> $nil || die("additional case succeeding a fallthrough case")
+        "NOTE: don't eval val if end"
+        end == $false && {
+            val == $nil && {
+                _ := do
+                end := $nil
+            }
+            val == $nil || {
+                end ||= pred(val) && {
+                    _ := do
+                    $true
+                }
+            }
         }
         ;
     }
-    loop()
+    fn
 }
 
--- var <> (a, b):{
+var while (cond, do):{
+    var 1st_it $true
+    var loop _
+    loop := ():{
+        cond() && {
+            do(1st_it)
+            1st_it := $false
+            _ := loop()
+        }
+    }
+    loop()
+    ;
+}
+
+var until (cond, do):{
+    var 1st_it $true
+    var loop _
+    loop := ():{
+        cond() || {
+            do(1st_it)
+            1st_it := $false
+            _ := loop()
+        }
+    }
+    loop()
+    ;
+}
+
+var not (bool):{
+    $false == bool
+}
+
+var <> (a, b):{
     a == b == $false
 }
 
@@ -68,7 +108,7 @@ var in {
     var Container::in (elem, container):{
         var nth 1
         var found $false
-        until(():{found || nth > len(container)}, ():{
+        until(():{found || nth > len(container)}, (_):{
             found := container[#nth] == elem
             nth += 1
         })
@@ -92,16 +132,6 @@ var !in (elem, container):{
     in(elem, container) == $false
 }
 
-var consumeExtra (OUT input):{
-    var extras "\n" + " " + Byte(9)
-    var nth 1
-    until(():{nth > len(input) || input[#nth] !in extras}, ():{
-        nth += 1
-    })
-
-    input := tern(nth > len(input), "", input[#nth..-1])
-}
-
 var parseInt (str):{
     var to_digit (c):{
         Int(c - Byte("0"))
@@ -122,73 +152,4 @@ var parseInt (str):{
     loop()
 
     res
-}
-
-var consumeLineNb (OUT input):{
-    var nth 1
-    until(():{nth > len(input) || input[#nth] !in '0 .. '9}, ():{
-        nth += 1
-    })
-    
-    var str tern(input == "", "", input[#1..<nth])
-    input := tern(nth > len(input), "", input[#nth..-1])
-    tern(str == "", $nil, parseInt(str))
-}
-
-var consumeRange (OUT input):{
-    var fromLine consumeLineNb(&input)
-    input := tern(len(input) > 2, input[#3..-1], "")
-    var toLine consumeLineNb(&input)
-    ['fromLine:fromLine, 'toLine:toLine]
-}
-
-var prog $args[#1]
-
-"interpret range"
-{
-    var range consumeRange(&prog)
-
-    var curr 1
-    var line _
-
-    var loop _
-
-    loop := ():{
-        line := getline()
-        curr == range.fromLine || {
-            curr += 1
-            loop()
-        }
-    }
-    loop()
-    line == $nil || print(line)
-
-    loop := ():{
-        line := getline()
-        curr >= range.toLine || {
-            print(line)
-            curr += 1
-            loop()
-        }
-    }
-    loop()
-}
-
-"interpret line number"
--- {
-    var lineNb consumeLineNb(&prog)
-    var curr 1
-    var line _
-
-    var loop _
-    loop := ():{
-        line := getline()
-        curr >= lineNb || {
-            curr += 1
-            loop()
-        }
-    }
-    loop()
-
-    print(line)
 }

@@ -1,0 +1,213 @@
+#!/usr/bin/env monlang
+
+include <smallstd.ml>
+include <utils/parsing.mlp>
+
+var consumeExtra (OUT input):{
+    var extras "\n" + " " + Byte(9)
+    var nth 1
+    until(():{nth > len(input) || input[#nth] !in extras}, (_):{
+        nth += 1
+    })
+
+    input := tern(nth > len(input), "", input[#nth..-1])
+}
+
+var peekLineNb (input):{
+    len(input) >= 1 && (input[#1] in "+-" || input[#1] in '0 .. '9)
+}
+
+var consumeLineNb (OUT input):{
+    len(input) >= 1 || die()
+
+    var sign ""
+    input[#1] in "+-" && {
+        len(input) >= 2 || die("Invalid line number in `" + input + "`")
+        sign := input[#1]
+        input := input[#2..-1]
+    }
+
+    var nth 1
+    while(():{input[#nth] in '0 .. '9}, (_):{
+        nth += 1
+    })
+    
+    var str tern(input == "", "", input[#1..<nth])
+    str <> "" || die("Invalid line number in `" + input + "`")
+    input := tern(nth > len(input), "", input[#nth..-1])
+    var lineNb parseInt(str)
+
+    ['sign:sign, 'lineNb:lineNb]
+}
+
+var interpretLineNb (_lineNb, OUT context):{
+    var sign _lineNb.sign
+    var lineNb _lineNb.lineNb
+    TODO
+}
+
+var evalLineNb (OUT input, OUT context):{
+    var lineNb consumeLineNb(&input)
+    interpretLineNb(lineNb, &context)
+}
+
+var evalLines (OUT input, OUT context):{
+    var fromRange? $false
+
+    peekLineNb(input) && {
+        evalLineNb(&input, &context)
+        consumeExtra(&input)
+        fromRange? := $true
+    }
+
+    peekStr("..") && {
+        discard(&input, 2)
+        consumeExtra(&input)
+        var case CaseAnalysis(Bool)
+
+        case(peekLineNb(input), {
+            context['succeedsRange?] := $true
+            peekStr("[") && {
+                discard(&input, 1)
+                context['exclusiveRange?] := $true
+            }
+            evalLineNb(&input, &context)
+            context['succeedsRange?] := $false
+            context['exclusiveRange?] := $false
+        })
+
+        case(fromRange? == $false, {
+            "handle full range"
+        })
+    }
+    
+
+
+
+
+
+    var case CaseAnalysis(Bool)
+
+    case(peekStr(input, ".."), {
+        discard(&input, 2)
+        consumeExtra(&input)
+    })
+
+    case(_, {
+
+    })
+
+    
+    case(input[#1] in "+-", {
+        len(input >= 2) || die()
+        var sign input[#1]
+        input := input[#2..-1]
+        var lineNb consumeLineNb(&input)
+        
+    })
+
+    
+
+    case(_, {
+        "starts with [0-9]"
+    })
+    
+    case(input[#1] in "+-", {
+
+    })
+    peekStr(input, "..") || {
+        
+    }
+}
+
+var evalProgram _
+
+var evalCommand (OUT input, OUT context):{
+    var peek CaseAnalysis((c):{peekStr(input, c)})
+
+    -- {
+        peek("q") && evalQueueOp(&input, &context)
+        peek("Q") && evalUnqueueOp(&input, &context)
+        peek("s") && evalStackOp(&input, &context)
+        peek("S") && evalUnstackOp(&input, &context)
+        peek("{") && {
+            context['subProgram?] == $false || die("Can't nest sub-programs")
+            context['subProgram?] := $true
+            evalProgram(&input, &context)
+            context['subProgram?] := $false
+        }
+    }
+
+    peek(_) && {
+        var lines? peekStr(input, "..") || peekLineNb(input)
+        lines? || die("Unknown operation in `" + input + "`")
+        evalLines(&input, &context)
+    }
+    ;
+}
+
+evalProgram := (OUT input, OUT context):{
+    consumeExtra(&input)
+    until(():{input == ""}, (1st_it):{
+        not(1st_it) && peek(input, ";") && {
+            discard(&input, 1)
+            consumeExtra(&input)
+        }
+        evalCommand(&input, &context)
+        consumeExtra(&input)
+    })
+}
+
+var prog $args[#1]
+
+consumeExtra()
+
+
+"interpret range"
+{
+    var range consumeRange(&prog)
+
+    var curr 1
+    var line _
+
+    var loop _
+
+    loop := ():{
+        line := getline()
+        curr == range.fromLine || {
+            curr += 1
+            loop()
+        }
+    }
+    loop()
+    line == $nil || print(line)
+
+    loop := ():{
+        line := getline()
+        curr >= range.toLine || {
+            print(line)
+            curr += 1
+            loop()
+        }
+    }
+    loop()
+}
+
+"interpret line number"
+-- {
+    var lineNb consumeLineNb(&prog)
+    var curr 1
+    var line _
+
+    var loop _
+    loop := ():{
+        line := getline()
+        curr >= lineNb || {
+            curr += 1
+            loop()
+        }
+    }
+    loop()
+
+    print(line)
+}
