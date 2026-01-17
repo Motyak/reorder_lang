@@ -9,6 +9,26 @@ var tern (cond, if_true, if_false):{
     tern(cond, if_true, if_false)
 }
 
+var not (bool):{
+    $false == bool
+}
+
+var <> (a, b):{
+    a == b == $false
+}
+
+var <= (a, b):{
+    a > b == $false
+}
+
+var >= (a, b):{
+    a > b || a == b
+}
+
+var < (a, b):{
+    (a > b || a == b) == $false
+}
+
 var CaseAnalysis (pred):{
     var end $false
     var fn (val, do):{
@@ -31,20 +51,6 @@ var CaseAnalysis (pred):{
     fn
 }
 
-var while (cond, do):{
-    var 1st_it $true
-    var loop _
-    loop := ():{
-        cond() && {
-            do(1st_it)
-            1st_it := $false
-            _ := loop()
-        }
-    }
-    loop()
-    ;
-}
-
 var until (cond, do):{
     var 1st_it $true
     var loop _
@@ -57,26 +63,6 @@ var until (cond, do):{
     }
     loop()
     ;
-}
-
-var not (bool):{
-    $false == bool
-}
-
-var <> (a, b):{
-    a == b == $false
-}
-
-var <= (a, b):{
-    a > b == $false
-}
-
-var >= (a, b):{
-    a > b || a == b
-}
-
-var < (a, b):{
-    (a > b || a == b) == $false
 }
 
 var - (varargs...):{
@@ -102,6 +88,34 @@ var .. (from, to):{
         })
     }
     dispatcher
+}
+
+var foreach {
+    var Container::foreach (OUT container, fn):{
+        var nth 1
+        until(():{nth > len(container)}, ():{
+            fn(&container[#nth])
+            nth += 1
+        })
+        container
+    }
+
+    var Range::foreach (range, fn):{
+        var i range('from)
+        var to range('to)
+        until(():{i > to}, (_):{
+            fn(i)
+            i += 1
+        })
+    }
+
+    var foreach (x, fn):{
+        tern($type(x) == 'Lambda, Range::foreach(x, fn), {
+            Container::foreach(&x, fn)
+        })
+    }
+
+    (foreach)
 }
 
 var in {

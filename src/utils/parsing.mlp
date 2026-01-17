@@ -1,7 +1,8 @@
 include <smallstd.ml>
 
 var peekStr (input, str):{
-    len(input) >= len(str) && input[#1..len_str] == str
+    var len_str len(str)
+    len(input) >= len_str && input[#1..len_str] == str
 }
 
 ```

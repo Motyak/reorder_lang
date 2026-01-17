@@ -13,6 +13,26 @@ var tern (cond, if_true, if_false):{
     tern(cond, if_true, if_false)
 }
 
+var not (bool):{
+    $false == bool
+}
+
+var <> (a, b):{
+    a == b == $false
+}
+
+var <= (a, b):{
+    a > b == $false
+}
+
+var >= (a, b):{
+    a > b || a == b
+}
+
+var < (a, b):{
+    (a > b || a == b) == $false
+}
+
 var CaseAnalysis (pred):{
     var end $false
     var fn (val, do):{
@@ -35,20 +55,6 @@ var CaseAnalysis (pred):{
     fn
 }
 
-var while (cond, do):{
-    var 1st_it $true
-    var loop _
-    loop := ():{
-        cond() && {
-            do(1st_it)
-            1st_it := $false
-            _ := loop()
-        }
-    }
-    loop()
-    ;
-}
-
 var until (cond, do):{
     var 1st_it $true
     var loop _
@@ -61,26 +67,6 @@ var until (cond, do):{
     }
     loop()
     ;
-}
-
-var not (bool):{
-    $false == bool
-}
-
-var <> (a, b):{
-    a == b == $false
-}
-
-var <= (a, b):{
-    a > b == $false
-}
-
-var >= (a, b):{
-    a > b || a == b
-}
-
-var < (a, b):{
-    (a > b || a == b) == $false
 }
 
 var - (varargs...):{
@@ -106,6 +92,34 @@ var .. (from, to):{
         })
     }
     dispatcher
+}
+
+var foreach {
+    var Container::foreach (OUT container, fn):{
+        var nth 1
+        until(():{nth > len(container)}, ():{
+            fn(&container[#nth])
+            nth += 1
+        })
+        container
+    }
+
+    var Range::foreach (range, fn):{
+        var i range('from)
+        var to range('to)
+        until(():{i > to}, (_):{
+            fn(i)
+            i += 1
+        })
+    }
+
+    var foreach (x, fn):{
+        tern($type(x) == 'Lambda, Range::foreach(x, fn), {
+            Container::foreach(&x, fn)
+        })
+    }
+
+    (foreach)
 }
 
 var in {
@@ -162,7 +176,8 @@ var parseInt (str):{
 
 
 var peekStr (input, str):{
-    len(input) >= len(str) && input[#1..len_str] == str
+    var len_str len(str)
+    len(input) >= len_str && input[#1..len_str] == str
 }
 
 ```
@@ -208,12 +223,13 @@ var consumeLineNb (OUT input):{
     var sign ""
     input[#1] in "+-" && {
         len(input) >= 2 || die("Invalid line number in `" + input + "`")
+        input[#2] in '0 .. '9 || die("Invalid line number in `" + input + "`")
         sign := input[#1]
         input := input[#2..-1]
     }
 
     var nth 1
-    while(():{input[#nth] in '0 .. '9}, (_):{
+    until(():{nth > len(input) || input[#nth] !in '0 .. '9}, (_):{
         nth += 1
     })
     
@@ -228,6 +244,27 @@ var consumeLineNb (OUT input):{
 var interpretLineNb (_lineNb, OUT context):{
     var sign _lineNb.sign
     var lineNb _lineNb.lineNb
+
+    foreach(context.currLineNb .. lineNb, (i):{
+        var line getline()
+
+        "skip to first line number and print it"
+        not(context.succeedsRange?) && i == lineNb && {
+            print(line)
+        }
+
+        "if succeeds range => print all, except last if exclusive range"
+        context.succeedsRange? && {
+            context.exclusiveRange? && i == lineNb || {
+                print(line)
+            }
+        }
+
+        context.currLineNb += 1
+    })
+}
+
+var handleFullRange (OUT context):{
     TODO
 }
 
@@ -245,64 +282,35 @@ var evalLines (OUT input, OUT context):{
         fromRange? := $true
     }
 
-    peekStr("..") && {
+    peekStr(input, "..") && {
         discard(&input, 2)
         consumeExtra(&input)
         var case CaseAnalysis(Bool)
 
         case(peekLineNb(input), {
-            context['succeedsRange?] := $true
-            peekStr("[") && {
+            context.succeedsRange? := $true
+            var lineNb consumeLineNb(&input)
+            consumeExtra(&input)
+            peekStr(input, "[") && {
                 discard(&input, 1)
-                context['exclusiveRange?] := $true
+                consumeExtra(&input)
+                context.exclusiveRange? := $true
             }
-            evalLineNb(&input, &context)
-            context['succeedsRange?] := $false
-            context['exclusiveRange?] := $false
+            interpretLineNb(lineNb, &context)
+            context.succeedsRange? := $false
+            context.exclusiveRange? := $false
         })
 
         case(fromRange? == $false, {
-            "handle full range"
+            peekStr(input, "[") && {
+                discard(&input, 1)
+                consumeExtra(&input)
+                context.exclusiveRange? := $true
+            }
+            handleFullRange(&context)
         })
     }
-    
-
-
-
-
-
-    var case CaseAnalysis(Bool)
-
-    case(peekStr(input, ".."), {
-        discard(&input, 2)
-        consumeExtra(&input)
-    })
-
-    case(_, {
-
-    })
-
-    
-    case(input[#1] in "+-", {
-        len(input >= 2) || die()
-        var sign input[#1]
-        input := input[#2..-1]
-        var lineNb consumeLineNb(&input)
-        
-    })
-
-    
-
-    case(_, {
-        "starts with [0-9]"
-    })
-    
-    case(input[#1] in "+-", {
-
-    })
-    peekStr(input, "..") || {
-        
-    }
+    ;
 }
 
 var evalProgram _
@@ -311,30 +319,25 @@ var evalCommand (OUT input, OUT context):{
     var peek CaseAnalysis((c):{peekStr(input, c)})
 
     -- {
-        peek("q") && evalQueueOp(&input, &context)
-        peek("Q") && evalUnqueueOp(&input, &context)
-        peek("s") && evalStackOp(&input, &context)
-        peek("S") && evalUnstackOp(&input, &context)
-        peek("{") && {
-            context['subProgram?] == $false || die("Can't nest sub-programs")
-            context['subProgram?] := $true
-            evalProgram(&input, &context)
-            context['subProgram?] := $false
-        }
+        peek("q", evalQueueOp(&input, &context))
+        peek("Q", evalUnqueueOp(&input, &context))
+        peek("s", evalStackOp(&input, &context))
+        peek("S", evalUnstackOp(&input, &context))
     }
 
-    peek(_) && {
-        var lines? peekStr(input, "..") || peekLineNb(input)
+    peek(_, {
+        var lines? peekLineNb(input)
+        lines? ||= peekStr(input, "..") || peekStr(input, "{")
         lines? || die("Unknown operation in `" + input + "`")
         evalLines(&input, &context)
-    }
+    })
     ;
 }
 
 evalProgram := (OUT input, OUT context):{
     consumeExtra(&input)
     until(():{input == ""}, (1st_it):{
-        not(1st_it) && peek(input, ";") && {
+        not(1st_it) && peekStr(input, ";") && {
             discard(&input, 1)
             consumeExtra(&input)
         }
@@ -344,55 +347,10 @@ evalProgram := (OUT input, OUT context):{
 }
 
 var prog $args[#1]
+var context [
+    'currLineNb => 1
+    'succeedsRange? => $false
+    'exclusiveRange? => $false
+]
 
-consumeExtra()
-
-
-"interpret range"
-{
-    var range consumeRange(&prog)
-
-    var curr 1
-    var line _
-
-    var loop _
-
-    loop := ():{
-        line := getline()
-        curr == range.fromLine || {
-            curr += 1
-            loop()
-        }
-    }
-    loop()
-    line == $nil || print(line)
-
-    loop := ():{
-        line := getline()
-        curr >= range.toLine || {
-            print(line)
-            curr += 1
-            loop()
-        }
-    }
-    loop()
-}
-
-"interpret line number"
--- {
-    var lineNb consumeLineNb(&prog)
-    var curr 1
-    var line _
-
-    var loop _
-    loop := ():{
-        line := getline()
-        curr >= lineNb || {
-            curr += 1
-            loop()
-        }
-    }
-    loop()
-
-    print(line)
-}
+evalProgram(&prog, &context)
