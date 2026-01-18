@@ -3,7 +3,7 @@ set -o errexit
 set -o nounset
 # set -o xtrace #debug
 
-args=(-- "2..4")
+source ${0%.sh}.args.sh # get 'args' variable from individual test
 
 function preprocess_prog {
     if [ "$PROG" -nt "${PROG%.ml}.mlp" ]; then

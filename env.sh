@@ -1,4 +1,4 @@
-
+# shellcheck shell=bash
 function __doit {
     local SCRIPT_DIR; SCRIPT_DIR="$(realpath "$(dirname "${BASH_SOURCE[0]}")")"
 
