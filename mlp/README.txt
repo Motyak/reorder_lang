@@ -12,8 +12,13 @@
 # you can also output in the stdout
 ./mlp.sh -o - myprog.mlp -I .
 
-# diff mode allows you to compare a modified target file..
-# ..with its original module once preprocessed
+# retro mode allows you to backpropagate ml file current content..
+# ..back to its mlp and all files it included
+./mlp.sh retro -o myprog.ml myprog.mlp -I .
+#        ^~~~~ just prefix the arguments with `retro`
+
+# diff mode allows you to compare ml file current content..
+# ..with its preprocessed mlp
 ./mlp.sh diff -o myprog.ml myprog.mlp -I .
 #        ^~~~~ just prefix the arguments with `diff`
 
