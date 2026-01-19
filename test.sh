@@ -23,10 +23,11 @@ preprocess_prog
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
 test="$(basename "${BASH_SOURCE[0]}")"; test="${test%.sh}"
->/dev/null diff "${test}.out.txt" <("$PROG" "${args[@]}" < "${test}.in.txt") || diffcode=$?
+prog_out="$("$PROG" "${args[@]}" < "${test}.in.txt"; echo -n x)"
+>/dev/null diff "${test}.out.txt" <(printf "%s" "$prog_out" | head -n-1) || diffcode=$?
 [ ${diffcode:-0} -eq 2 ] && exit 2
 [ ${diffcode:-0} -eq 1 ] && {
     echo "=== ❌ $test ==="
-    git --no-pager diff --no-index "${test}.out.txt" <(2>/dev/null "$PROG" "${args[@]}" < "${test}.in.txt")
+    git --no-pager diff --no-index "${test}.out.txt" <(printf "%s" "$prog_out" | head -n-1)
 }
 echo "=== ✅ $test ==="
