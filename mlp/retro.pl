@@ -24,6 +24,42 @@ my $ML_FILE = shift @ARGV;
 @ARGV or ERR("Missing mlp file argument");
 my $MLP_FILE = shift @ARGV;
 
+my @INCLUDE_PATH = ();
+
+{
+    my $include_arg = false;
+    foreach my $arg (@ARGV) {
+        if ($include_arg) {
+            push(@INCLUDE_PATH, $arg);
+            $include_arg = false;
+        }
+        elsif ($arg =~ /^-I$/) {
+            $include_arg = true;
+        }
+        else {
+            ERR("Unknown option/argument: `$arg`");
+        }
+    }
+}
+
+unless (@INCLUDE_PATH) {
+    push(@INCLUDE_PATH, ".");
+}
+
+sub short_name {
+    my ($dirs, $included_file) = @_;
+    my $dirname = $included_file =~ s/^([^\/]+)\//$1/;
+
+    foreach my $dir (@$dirs) {
+        my $basename = $dir =~ s/\/([^\/]+)\/*$/$1/;
+        if ($included_file =~ /^\Q${basename}\E\/(.*)/) {
+            return $1;
+        }
+    }
+
+    return $included_file;
+}
+
 # file => content
 my %content = ($MLP_FILE => "");
 
@@ -38,6 +74,9 @@ while (my $line = <$fh>) {
     chomp $line;
 
     if ($line =~ /^"=== mlp: BEGIN (\S+)/) {
+        my $short_name = short_name(\@INCLUDE_PATH, $1);
+        $content{$curr_file} .= "include <${short_name}>";
+
         $curr_file = $1;
         push @curr_file_stack, $curr_file;
         $content{$curr_file} = "";
@@ -55,6 +94,10 @@ while (my $line = <$fh>) {
         $curr_file = $curr_file_stack[-1]
     }
 
+    elsif ($line =~ /^"(include <\S+>)" -- mlp$/) {
+        $content{$curr_file} .= "$1\n"
+    }
+
     else {
         $content{$curr_file} .= "$line\n"
     }
@@ -69,9 +112,6 @@ utime -1, $ML_FILE_MTIME, $ML_FILE;
 my $err_msg = "";
 
 for my $file (keys %content) {
-    my @content_file_lines = split "\n", $content{$file};
-    my $new_content = "";
-
     if (-f $file) {
         if ((stat $file)[9] > $ML_FILE_MTIME) {
             $err_msg .= "- `$file` is newer than `$ML_FILE` => SKIP\n";
@@ -85,22 +125,26 @@ for my $file (keys %content) {
     }
 
     if (open my $fh, "+<:encoding(UTF-8)", $file) {
-        while (my $line = <$fh>) {
-            chomp $line;
+        my $package_main = "";
+        unless ($file eq $MLP_FILE) {
+            my $in_package_main = false;
+            while (my $line = <$fh>) {
+                chomp $line;
 
-            if ($line =~ /^include <(\S+)>$/) {
-                $new_content .= "$line\n";
-            }
+                if ($line =~ /^package main$/) {
+                    $package_main .= "$&\n";
+                    $in_package_main = true;
+                }
 
-            else {
-                @content_file_lines or die();
-                $new_content .= shift(@content_file_lines) . "\n";
+                elsif ($in_package_main) {
+                    $package_main .= "$line\n"
+                }
             }
         }
 
         truncate($fh, 0);
         seek($fh, 0, 0);
-        print $fh $new_content;
+        print $fh $content{$file} . $package_main;
 
         close $fh;
         utime -1, $ML_FILE_MTIME, $file;

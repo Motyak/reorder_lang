@@ -102,7 +102,10 @@ sub preprocess {
 
         if ($line =~ /^include <(\S+)>$/ && !($in_package_main)) {
             my $included_file = search_file(\@INCLUDE_PATH, $1) or INCLUDE_ERR($file, $line, $.);
-            next if exists $files{$included_file};
+            if (exists $files{$included_file}) {
+                $res .= "\"$&\" -- mlp\n"; # required for proper "retro"ing
+                next;
+            }
             $files{$included_file} = _;
 
             {
@@ -128,13 +131,13 @@ sub preprocess {
 
         elsif ($line =~ /^package main$/) {
             unless ($rec_call) {
-                $res .= "\"$&\"\n";
+                $res .= "\"$&\" -- mlp\n";
             }
             $in_package_main = true;
         }
 
         elsif ($line =~ /^package \S+$/) {
-            $res .= "\"$&\"\n";
+            $res .= "\"$&\" -- mlp\n";
         }
 
         elsif ($in_package_main) {

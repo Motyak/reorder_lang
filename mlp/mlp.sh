@@ -60,7 +60,7 @@ fi
     >/dev/null preprocess "$FILEIN" $ARGS || exit 2
     [ -f "$FILEOUT" ] || exit 3
     exit_code=0
-    git diff --no-index --no-prefix -U1000 <(preprocess "$FILEIN" $ARGS) "$FILEOUT" || {
+    git diff --no-index --no-prefix -U1000 -G. <(preprocess "$FILEIN" $ARGS) "$FILEOUT" || {
         exit_code=$?
     }
     exit $exit_code # git diff exit code
