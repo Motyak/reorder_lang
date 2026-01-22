@@ -23,14 +23,13 @@ function retro {
     perl "${SCRIPT_DIR}/retro.pl" "$@" || return $?
 }
 
-[ "$1" == diff ] && {
+if [ "$1" == diff ]; then
     DIFFMODE=1
     shift
-}
-[ "$1" == retro ] && {
+elif [ "$1" == retro ]; then
     RETROMODE=1
     shift
-}
+fi
 
 if [ "$1" == -o ]; then
     FILEOUT="$2"

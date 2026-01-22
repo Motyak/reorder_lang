@@ -1,9 +1,9 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use open ":encoding(UTF-8)", ":std";
 use constant true => 1;
 use constant false => 0;
-binmode(STDOUT, ":utf8");
 
 my $CMD = "$0" . " " x (@ARGV > 0) . join(" ", @ARGV);
 
@@ -69,7 +69,7 @@ my @curr_file_stack = ($MLP_FILE);
 my $curr_file = $curr_file_stack[-1];
 my $LF_after_begin = false;
 
-open my $fh, "<:encoding(UTF-8)", $ML_FILE or OPEN_FILE_ERR($ML_FILE, $!);
+open my $fh, "<", $ML_FILE or OPEN_FILE_ERR($ML_FILE, $!);
 while (my $line = <$fh>) {
     chomp $line;
 
@@ -124,7 +124,7 @@ for my $file (keys %content) {
         }
     }
 
-    if (open my $fh, "+<:encoding(UTF-8)", $file) {
+    if (open my $fh, "+<", $file) {
         my $package_main = "";
         unless ($file eq $MLP_FILE) {
             my $in_package_main = false;
@@ -155,6 +155,6 @@ for my $file (keys %content) {
 }
 
 if ($err_msg) {
-    print($err_msg);
-    print("Use 'mlp diff' and/or 'mlp' to mitigate this\n")
+    print STDERR $err_msg;
+    print STDERR "Use 'mlp diff' and/or 'mlp' to mitigate this\n";
 }

@@ -1,11 +1,11 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use open ":encoding(UTF-8)", ":std";
 use feature "state";
 use constant true => 1;
 use constant false => 0;
 use constant _ => undef;
-binmode(STDOUT, ":utf8");
 
 my $CMD = "$0" . " " x (@ARGV > 0) . join(" ", @ARGV);
 
@@ -96,7 +96,7 @@ sub preprocess {
         %files = ($file => _);
     }
 
-    open my $fh, "<:encoding(UTF-8)", $file or OPEN_FILE_ERR($file, $!);
+    open my $fh, "<", $file or OPEN_FILE_ERR($file, $!);
     while (my $line = <$fh>) {
         chomp $line;
 
