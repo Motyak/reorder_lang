@@ -78,7 +78,7 @@ sub INCLUDE_ERR {
     my ($file, $line, $linenb) = @_;
 
     my $include = substr $line, 9, -1;
-    my $err_msg = "${file}:$.:10: ERR: no include path in which to search for `${include}`\n";
+    my $err_msg = "${file}:${linenb}:10: ERR: no include path in which to search for `${include}`\n";
     $err_msg .= rjust("$linenb", 5) . " | " . $line . "\n";
     $err_msg .= " " x 5 . " | " . " " x 9 . "^";
     ERR($err_msg);
