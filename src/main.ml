@@ -174,6 +174,7 @@ var parseInt (str):{
 "=== mlp: END src/smallstd.ml (finally back to /home/motyak/devv/playground/reorder_lang/src/main.mlp) ==="
 "=== mlp: BEGIN src/utils/parsing.mlp ========================================="
 
+"include <smallstd.ml>" -- mlp
 
 var peekStr (input, str):{
     var len_str len(str)

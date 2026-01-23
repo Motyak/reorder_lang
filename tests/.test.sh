@@ -12,11 +12,15 @@ function preprocess_prog {
         # we backpropagate it
         preprocessor retro "${PROG%.ml}.mlp"
 
-    else # if older or same date or doesn't exist
+    # if older or doesn't exist
+    elif [ "$PROG" -ot "${PROG%.ml}.mlp" ]; then
         # we overwrite it
         local created; if [ -f "$PROG" ]; then created=0; else created=1; fi
         preprocessor "${PROG%.ml}.mlp"
         ((created)) && chmod +x "$PROG"
+
+    else # if same date
+        : # nothing to do
 
     fi
     :
