@@ -6,7 +6,7 @@ function __doit {
 
     eval "
     function preprocessor {
-        \"${SCRIPT_DIR}/mlp/mlp.sh\" \"\$@\" -I src
+        \"${SCRIPT_DIR}/mlp/mlp2.sh\" \"\$@\" -I src
     }
     "
     export -f preprocessor

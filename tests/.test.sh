@@ -9,35 +9,8 @@ set -o nounset
 
 DRYRUN=${DRYRUN:-0}
 
-function preprocess_prog {
-    >/dev/null preprocessor diff "${PROG%.ml}.mlp" && {
-        ((DRYRUN)) && { >&2 echo "MLP == ML"; exit 0; }
-        return
-    }
-
-    if [ "$PROG" -nt "${PROG%.ml}.mlp" ]; then
-        # we backpropagate it
-        ((DRYRUN)) && { >&2 echo "MLP <= ML"; exit 0; }
-        preprocessor retro "${PROG%.ml}.mlp"
-
-    # if older or doesn't exist
-    elif [ "$PROG" -ot "${PROG%.ml}.mlp" ]; then
-        # we overwrite it
-        ((DRYRUN)) && { >&2 echo "MLP => ML"; exit 0; }
-        local created; if [ -f "$PROG" ]; then created=0; else created=1; fi
-        preprocessor "${PROG%.ml}.mlp"
-        ((created)) && chmod +x "$PROG"
-
-    else # if same date
-        # means some included .mlp has changed
-        ((DRYRUN)) && { >&2 echo "MLP => ML"; exit 0; }
-        preprocessor "${PROG%.ml}.mlp"
-
-    fi
-    :
-}
-preprocess_prog
-
+preprocessor "${PROG%.ml}.mlp" # do this before cd'ing
+((DRYRUN)) && exit 0
 cd "$(dirname "${BASH_SOURCE[0]}")"
 test="$(basename "${BASH_SOURCE[0]}")"; test="${test%.sh}"
 source "${test}.args.sh" # get 'args' variable from individual test
