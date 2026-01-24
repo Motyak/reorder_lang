@@ -50,7 +50,7 @@ fi
 
 ((RETROMODE)) && {
     exit_code=0
-    retro "$FILEOUT" "$FILEIN" || exit_code=$?
+    retro "$FILEOUT" "$FILEIN" $ARGS || exit_code=$?
     exit $exit_code
 }
 

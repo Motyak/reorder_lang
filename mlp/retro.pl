@@ -48,10 +48,10 @@ unless (@INCLUDE_PATH) {
 
 sub short_name {
     my ($dirs, $included_file) = @_;
-    my $dirname = $included_file =~ s/^([^\/]+)\//$1/;
+    (my $dirname = $included_file) =~ s/^([^\/]+)\//$1/ or die();
 
     foreach my $dir (@$dirs) {
-        my $basename = $dir =~ s/\/([^\/]+)\/*$/$1/;
+        (my $basename = $dir) =~ s/\/*([^\/]+)\/*$/$1/ or die();
         if ($included_file =~ /^\Q${basename}\E\/(.*)/) {
             return $1;
         }
@@ -75,7 +75,7 @@ while (my $line = <$fh>) {
 
     if ($line =~ /^"=== mlp: BEGIN (\S+)/) {
         my $short_name = short_name(\@INCLUDE_PATH, $1);
-        $content{$curr_file} .= "include <${short_name}>";
+        $content{$curr_file} .= "include <${short_name}>\n";
 
         $curr_file = $1;
         push @curr_file_stack, $curr_file;
@@ -157,4 +157,5 @@ for my $file (keys %content) {
 if ($err_msg) {
     print STDERR $err_msg;
     print STDERR "Use 'mlp diff' and/or 'mlp' to mitigate this\n";
+    exit 1;
 }

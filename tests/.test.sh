@@ -20,7 +20,9 @@ function preprocess_prog {
         ((created)) && chmod +x "$PROG"
 
     else # if same date
-        : # nothing to do
+        # IMPORTANT we still want to overwrite the ml file..
+        # ..in case we edited one of the mlp included file
+        preprocessor "${PROG%.ml}.mlp"
 
     fi
     :
