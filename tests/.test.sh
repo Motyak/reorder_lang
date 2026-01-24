@@ -7,14 +7,18 @@ set -o errexit
 set -o nounset
 # set -o xtrace #debug
 
+DRYRUN=${DRYRUN:-0}
+
 function preprocess_prog {
     if [ "$PROG" -nt "${PROG%.ml}.mlp" ]; then
         # we backpropagate it
+        ((DRYRUN)) && { >&2 echo "MLP <= ML"; exit 0; }
         preprocessor retro "${PROG%.ml}.mlp"
 
     # if older or doesn't exist
     elif [ "$PROG" -ot "${PROG%.ml}.mlp" ]; then
         # we overwrite it
+        ((DRYRUN)) && { >&2 echo "MLP => ML"; exit 0; }
         local created; if [ -f "$PROG" ]; then created=0; else created=1; fi
         preprocessor "${PROG%.ml}.mlp"
         ((created)) && chmod +x "$PROG"
@@ -22,6 +26,7 @@ function preprocess_prog {
     else # if same date
         # IMPORTANT we still want to overwrite the ml file..
         # ..in case we edited one of the mlp included file
+        ((DRYRUN)) && { >&2 echo "MLP => ML"; exit 0; }
         preprocessor "${PROG%.ml}.mlp"
 
     fi
