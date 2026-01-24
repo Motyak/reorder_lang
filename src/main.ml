@@ -1,6 +1,6 @@
 #!/usr/bin/env monlang
 
-"=== mlp: BEGIN src/smallstd.ml ==============================================="
+"=== mlp: BEGIN src/smallstd.mlp =============================================="
 
 var tern (cond, if_true, if_false):{
     var res _
@@ -171,10 +171,10 @@ var parseInt (str):{
 
     res
 }
-"=== mlp: END src/smallstd.ml (finally back to /home/motyak/devv/playground/reorder_lang/src/main.mlp) ==="
+"=== mlp: END src/smallstd.mlp (finally back to /home/motyak/devv/playground/reorder_lang/src/main.mlp) ==="
 "=== mlp: BEGIN src/utils/parsing.mlp ========================================="
 
-"include <smallstd.ml>" -- mlp
+"include <smallstd.mlp>" -- mlp
 
 var peekStr (input, str):{
     var len_str len(str)

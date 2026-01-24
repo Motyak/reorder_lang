@@ -1,6 +1,6 @@
 #!/usr/bin/env monlang
 
-include <smallstd.ml>
+include <smallstd.mlp>
 include <utils/parsing.mlp>
 
 var consumeExtra (OUT input):{

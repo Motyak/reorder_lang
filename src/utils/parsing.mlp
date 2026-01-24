@@ -1,4 +1,4 @@
-include <smallstd.ml>
+include <smallstd.mlp>
 
 var peekStr (input, str):{
     var len_str len(str)
