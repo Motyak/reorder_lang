@@ -65,7 +65,7 @@ fi
     exit $exit_code # git diff exit code
 }
 
-# for this to work, we put the same timestamp (preprocessing time here, see 'retro')
+# for this to work, we put the same timestamp (preprocessing time)..
 # ..to both input and output file
 [ -f "$FILEOUT" ] && [ "$FILEOUT" -nt "$FILEIN" ] && {
     # protection against losing data

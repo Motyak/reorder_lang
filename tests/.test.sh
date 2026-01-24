@@ -10,6 +10,11 @@ set -o nounset
 DRYRUN=${DRYRUN:-0}
 
 function preprocess_prog {
+    >/dev/null preprocessor diff "${PROG%.ml}.mlp" && {
+        ((DRYRUN)) && { >&2 echo "MLP == ML"; exit 0; }
+        return
+    }
+
     if [ "$PROG" -nt "${PROG%.ml}.mlp" ]; then
         # we backpropagate it
         ((DRYRUN)) && { >&2 echo "MLP <= ML"; exit 0; }
@@ -24,8 +29,7 @@ function preprocess_prog {
         ((created)) && chmod +x "$PROG"
 
     else # if same date
-        # IMPORTANT we still want to overwrite the ml file..
-        # ..in case we edited one of the mlp included file
+        # means some included .mlp has changed
         ((DRYRUN)) && { >&2 echo "MLP => ML"; exit 0; }
         preprocessor "${PROG%.ml}.mlp"
 
