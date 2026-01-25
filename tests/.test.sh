@@ -9,11 +9,10 @@ set -o nounset
 
 DRYRUN=${DRYRUN:-0}
 
-preprocessor "${PROG%.ml}.mlp" # do this before cd'ing
-((DRYRUN)) && exit 0
 cd "$(dirname "${BASH_SOURCE[0]}")"
 test="$(basename "${BASH_SOURCE[0]}")"; test="${test%.sh}"
 source "${test}.args.sh" # get 'args' variable from individual test
+preprocess_prog; ((DRYRUN)) && exit 0
 prog_out="$("$PROG" "${args[@]}" < "${test}.in.txt"; echo -n x)"
 >/dev/null diff "${test}.out.txt" <(printf "%s" "$prog_out" | head -n-1) || diffcode=$?
 [ ${diffcode:-0} -eq 2 ] && exit 2

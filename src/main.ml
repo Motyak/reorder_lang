@@ -171,7 +171,7 @@ var parseInt (str):{
 
     res
 }
-"=== mlp: END src/smallstd.mlp (finally back to /home/motyak/devv/playground/reorder_lang/src/main.mlp) ==="
+"=== mlp: END src/smallstd.mlp (finally back to src/main.mlp) ================="
 "=== mlp: BEGIN src/utils/parsing.mlp ========================================="
 
 "include <smallstd.mlp>" -- mlp
@@ -202,7 +202,7 @@ var consumeOptStr (OUT input, optStr):{
     }
     ;
 }
-"=== mlp: END src/utils/parsing.mlp (finally back to /home/motyak/devv/playground/reorder_lang/src/main.mlp) ==="
+"=== mlp: END src/utils/parsing.mlp (finally back to src/main.mlp) ============"
 
 var consumeExtra (OUT input):{
     var extras "\n" + " " + Byte(9)
