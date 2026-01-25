@@ -5,7 +5,7 @@ set -o errexit
 # sophisticated mlp wrapper
 
 CMD="$0${@:+ }$@"
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+SCRIPT_DIR="$(dirname "$0")"
 
 function ERR {
     local msg="$1"

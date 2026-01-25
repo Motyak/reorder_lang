@@ -9,8 +9,8 @@ set -o nounset
 
 DRYRUN=${DRYRUN:-0}
 
-cd "$(dirname "${BASH_SOURCE[0]}")"
-test="$(basename "${BASH_SOURCE[0]}")"; test="${test%.sh}"
+cd "$(dirname "$0")"
+test="$(basename "$0")"; test="${test%.sh}"
 source "${test}.args.sh" # get 'args' variable from individual test
 preprocess_prog; ((DRYRUN)) && exit 0
 prog_out="$("$PROG" "${args[@]}" < "${test}.in.txt"; echo -n x)"
