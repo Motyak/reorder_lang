@@ -70,6 +70,7 @@ my $curr_file = $curr_file_stack[-1];
 my $LF_after_begin = false;
 
 open my $fh, "<", $ML_FILE or OPEN_FILE_ERR($ML_FILE, $!);
+my $ML_FILE_MTIME = (stat $ML_FILE)[9];
 while (my $line = <$fh>) {
     chomp $line;
 
@@ -104,24 +105,31 @@ while (my $line = <$fh>) {
 }
 close $fh;
 
-my $ML_FILE_MTIME = (stat $ML_FILE)[9];
+my $warnings = "";
+for my $file (keys %content) {
+    if (-f $file && (stat $file)[9] > $ML_FILE_MTIME) {
+        $warnings .= "`$file` is newer than `$ML_FILE`\n";
+    }
+}
+# if there is multiple warnings, prepend each warning with a dash
+$warnings =~ s/([^\n]*\n)/- $1/g if $warnings =~ /\n[^\n]*\n/;
+if ($warnings) {
+    print STDERR $warnings;
+    print STDERR "proceed anyway?(Y/n) >";
+    if (<STDIN> =~ /n|N/) {
+        print STDERR "aborted\n";
+        exit 0;
+    }
+}
+
 # need to set its own mtime with utime
 # (because utime is second-precision only)
 utime -1, $ML_FILE_MTIME, $ML_FILE;
 
-my $err_msg = "";
-
 for my $file (keys %content) {
-    if (-f $file) {
-        if ((stat $file)[9] > $ML_FILE_MTIME) {
-            $err_msg .= "- `$file` is newer than `$ML_FILE` => SKIP\n";
-            next;
-        }
-
-        elsif ((stat $file)[9] == $ML_FILE_MTIME) {
-            utime -1, $ML_FILE_MTIME, $file;
-            next; # nothing to do
-        }
+    if (-f $file && (stat $file)[9] == $ML_FILE_MTIME) {
+        # utime -1, $ML_FILE_MTIME, $file; # useless ?
+        next; # nothing to do
     }
 
     if (open my $fh, "+<", $file) {
@@ -150,12 +158,6 @@ for my $file (keys %content) {
         utime -1, $ML_FILE_MTIME, $file;
     }
     else {
-        $err_msg .= "- Could not open file `$file`: $!\n";
+        OPEN_FILE_ERR($file, $!);
     }
-}
-
-if ($err_msg) {
-    print STDERR $err_msg;
-    print STDERR "Use 'mlp diff' and/or 'mlp' to mitigate this\n";
-    exit 1;
 }
