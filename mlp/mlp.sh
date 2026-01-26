@@ -66,7 +66,7 @@ fi
 }
 
 # for this to work, we put the same timestamp (preprocessing time)..
-# ..to both input and output file
+# ..to both input and output file (also: see 'retro')
 [ -f "$FILEOUT" ] && [ "$FILEOUT" -nt "$FILEIN" ] && {
     # protection against losing data
     >&2 echo "Output file has been updated, are you sure you want to overwrite it ?"

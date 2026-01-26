@@ -35,26 +35,29 @@ function mlp1 {
     "${SCRIPT_DIR}/mlp.sh" "$@" || return $?
 }
 
+[ -f "$FILEOUT" ] || {
+    # we create it
+    ((DRYRUN)) && { >&2 echo "MLP => ML"; exit 0; }
+    mlp1 -o "$FILEOUT" "$FILEIN" $ARGS
+    chmod +x "$FILEOUT"
+}
+
 >/dev/null mlp1 diff -o "$FILEOUT" "$FILEIN" $ARGS || exit_code=$?
-if [ ${exit_code:-0} -eq 0 ]; then
+[ ${exit_code:-0} -eq 0 ] && {
     ((DRYRUN)) && { >&2 echo "MLP == ML"; }
     exit 0
-elif [ ${exit_code:-0} -ne 1 ]; then
-    exit $exit_code
-fi
+}
+[ ${exit_code:-0} -ne 1 ] && exit $exit_code
 
 if [ "$FILEOUT" -nt "$FILEIN" ]; then
     # we backpropagate it
     ((DRYRUN)) && { >&2 echo "MLP <= ML"; exit 0; }
     mlp1 retro -o "$FILEOUT" "$FILEIN" $ARGS
 
-# if older or doesn't exist
 elif [ "$FILEOUT" -ot "$FILEIN" ]; then
     # we overwrite it
     ((DRYRUN)) && { >&2 echo "MLP => ML"; exit 0; }
-    if [ -f "$FILEOUT" ]; then created=0; else created=1; fi
     mlp1 -o "$FILEOUT" "$FILEIN" $ARGS
-    ((created)) && chmod +x "$FILEOUT"
 
 else # if same date
     # means some included .mlp has changed
