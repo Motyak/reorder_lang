@@ -204,6 +204,46 @@ var consumeOptStr (OUT input, optStr):{
 }
 "=== mlp: END src/utils/parsing.mlp (finally back to src/main.mlp) ============"
 
+var builtin::print print
+var builtin::getline getline
+
+"override builtins"
+var print print
+var getline getline
+
+var convertNegLineNb {
+    var lines []
+    var slurp_stdin _
+    slurp_stdin := ():{
+        var line builtin::getline()
+        line == $nil || {
+            lines += line
+            _ := slurp_stdin()
+        }
+    }
+
+    var i _
+    var 1st_time_called? $true
+    var convertNegLineNb (nb, context):{
+        1st_time_called? && {
+            i := context.currLineNb
+            slurp_stdin()
+            getline := ():{
+                len(lines) > 0 || die()
+                var line lines[#1]
+                lines := tern(len(lines) == 1, [], lines[#2..-1])
+                i += 1
+                line
+            }
+            1st_time_called? := $false
+        }
+        nb <= len(lines) || die("Out of bounds: `-" + nb + "`")
+        i + len(lines) - nb + 1
+    }
+    convertNegLineNb
+}
+
+
 var consumeExtra (OUT input):{
     var extras "\n" + " " + Byte(9)
     var nth 1
@@ -245,35 +285,30 @@ var consumeLineNb (OUT input):{
 var interpretLineNb (_lineNb, OUT context):{
     var sign _lineNb.sign
     var nb _lineNb.nb
+    let i context.currLineNb
 
-    var case_sign CaseAnalysis((c):{sign == c})
-    case_sign("-", {
-        ;
+    var lineEnd {
+        var lineEnd nb
+        sign == "-" && {lineEnd := convertNegLineNb(lineEnd, context)}
+        context.exclusiveRange? && {lineEnd -= 1}
+        sign == "+" && {lineEnd := i + lineEnd}
+        lineEnd
+    }
+
+    until(():{i == lineEnd}, (_):{
+        i += 1
+        var line getline()
+
+        "skip to first line number and print it"
+        not(context.succeedsRange?) && i == lineEnd && {
+            print(line)
+        }
+
+        "print all"
+        context.succeedsRange? && {
+            print(line)
+        }
     })
-
-    "'+' sign or no sign"
-    case_sign(_, {
-        let i context.currLineNb
-        var lineEnd tern(sign == "+", i, 0) + tern(context.exclusiveRange?, nb - 1, nb)
-        until(():{i == lineEnd}, (_):{
-            i += 1
-            var line getline()
-
-            "skip to first line number and print it"
-            not(context.succeedsRange?) && i == lineEnd && {
-                print(line)
-            }
-
-            "print all"
-            context.succeedsRange? && {
-                print(line)
-            }
-        })
-    })
-}
-
-var handleOpenEndRange (OUT context):{
-    TODO
 }
 
 var evalLineNb (OUT input, OUT context):{
@@ -315,7 +350,9 @@ var evalLines (OUT input, OUT context):{
                 consumeExtra(&input)
                 context.exclusiveRange? := $true
             }
-            handleOpenEndRange(&context)
+            "handle open end range"
+            interpretLineNb(['sign:"-", 'nb:1], &context)
+            context.exclusiveRange? := $false
         })
     }
     ;
