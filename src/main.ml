@@ -317,21 +317,18 @@ var evalLineNb (OUT input, OUT context):{
 }
 
 var evalLines (OUT input, OUT context):{
-    var fromRange? $false
-
     peekLineNb(input) && {
         evalLineNb(&input, &context)
         consumeExtra(&input)
-        fromRange? := $true
     }
 
     peekStr(input, "..") && {
         discard(&input, 2)
         consumeExtra(&input)
+        context.succeedsRange? := $true
         var case CaseAnalysis(Bool)
 
         case(peekLineNb(input), {
-            context.succeedsRange? := $true
             var lineNb consumeLineNb(&input)
             consumeExtra(&input)
             peekStr(input, "[") && {
@@ -340,11 +337,10 @@ var evalLines (OUT input, OUT context):{
                 context.exclusiveRange? := $true
             }
             interpretLineNb(lineNb, &context)
-            context.succeedsRange? := $false
             context.exclusiveRange? := $false
         })
 
-        case(fromRange? == $false, {
+        case(_, {
             peekStr(input, "[") && {
                 discard(&input, 1)
                 consumeExtra(&input)
@@ -354,6 +350,8 @@ var evalLines (OUT input, OUT context):{
             interpretLineNb(['sign:"-", 'nb:1], &context)
             context.exclusiveRange? := $false
         })
+
+        context.succeedsRange? := $false
     }
     ;
 }
