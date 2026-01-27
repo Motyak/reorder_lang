@@ -52,12 +52,28 @@ var CaseAnalysis (pred):{
 }
 
 var until (cond, do):{
-    var 1st_it $true
+    var 1st_it? $true
     var loop _
     loop := ():{
         cond() || {
-            do(1st_it)
-            1st_it := $false
+            do(1st_it?)
+            1st_it? := $false
+            _ := loop()
+        }
+    }
+    loop()
+    ;
+}
+
+var do_while (do, cond):{
+    var 1st_it? $true
+    do(1st_it?)
+    1st_it? := $false
+
+    var loop _
+    loop := ():{
+        cond() && {
+            do(1st_it?)
             _ := loop()
         }
     }

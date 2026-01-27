@@ -6,7 +6,7 @@ set -o errexit
 trap '[ -f "$FILEOUT" ] && rm -f "$FILEOUT"' ERR
 
 CMD="$0${@:+ }$@"
-SCRIPT_DIR="$(dirname "$0")"
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
 function ERR {
     local msg="$1"

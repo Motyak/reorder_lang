@@ -56,12 +56,28 @@ var CaseAnalysis (pred):{
 }
 
 var until (cond, do):{
-    var 1st_it $true
+    var 1st_it? $true
     var loop _
     loop := ():{
         cond() || {
-            do(1st_it)
-            1st_it := $false
+            do(1st_it?)
+            1st_it? := $false
+            _ := loop()
+        }
+    }
+    loop()
+    ;
+}
+
+var do_while (do, cond):{
+    var 1st_it? $true
+    do(1st_it?)
+    1st_it? := $false
+
+    var loop _
+    loop := ():{
+        cond() && {
+            do(1st_it?)
             _ := loop()
         }
     }
@@ -191,12 +207,12 @@ var discard (OUT input, n):{
     })
 }
 
-var consumeStr (OUT input, str):{
+-- var consumeStr (OUT input, str):{
     peekStr(input, str) || die("Failed to consume `" + str + "` in `" + input + "`")
     discard(&input, len(str))
 }
 
-var consumeOptStr (OUT input, optStr):{
+-- var consumeOptStr (OUT input, optStr):{
     peekStr(input, str) && {
         discard(&input, len(str))
     }
@@ -317,43 +333,49 @@ var evalLineNb (OUT input, OUT context):{
 }
 
 var evalLines (OUT input, OUT context):{
-    peekLineNb(input) && {
-        evalLineNb(&input, &context)
-        consumeExtra(&input)
-    }
-
-    peekStr(input, "..") && {
-        discard(&input, 2)
-        consumeExtra(&input)
-        context.succeedsRange? := $true
-        var case CaseAnalysis(Bool)
-
-        case(peekLineNb(input), {
-            var lineNb consumeLineNb(&input)
+    do_while((1st_it?):{
+        1st_it? || {
+            discard(&input, 1) -- ","
             consumeExtra(&input)
-            peekStr(input, "[") && {
-                discard(&input, 1)
-                consumeExtra(&input)
-                context.exclusiveRange? := $true
-            }
-            interpretLineNb(lineNb, &context)
-            context.exclusiveRange? := $false
-        })
+        }
 
-        case(_, {
-            peekStr(input, "[") && {
-                discard(&input, 1)
-                consumeExtra(&input)
-                context.exclusiveRange? := $true
-            }
-            "handle open end range"
-            interpretLineNb(['sign:"-", 'nb:1], &context)
-            context.exclusiveRange? := $false
-        })
+        peekLineNb(input) && {
+            evalLineNb(&input, &context)
+            consumeExtra(&input)
+        }
 
-        context.succeedsRange? := $false
-    }
-    ;
+        peekStr(input, "..") && {
+            discard(&input, 2)
+            consumeExtra(&input)
+            context.succeedsRange? := $true
+            var case CaseAnalysis(Bool)
+
+            case(peekLineNb(input), {
+                var lineNb consumeLineNb(&input)
+                consumeExtra(&input)
+                peekStr(input, "[") && {
+                    discard(&input, 1)
+                    consumeExtra(&input)
+                    context.exclusiveRange? := $true
+                }
+                interpretLineNb(lineNb, &context)
+                context.exclusiveRange? := $false
+            })
+
+            case(_, {
+                peekStr(input, "[") && {
+                    discard(&input, 1)
+                    consumeExtra(&input)
+                    context.exclusiveRange? := $true
+                }
+                "handle open end range"
+                interpretLineNb(['sign:"-", 'nb:1], &context)
+                context.exclusiveRange? := $false
+            })
+
+            context.succeedsRange? := $false
+        }
+    }, ():{peekStr(input, ",")})
 }
 
 var evalProgram _
@@ -379,8 +401,8 @@ var evalCommand (OUT input, OUT context):{
 
 evalProgram := (OUT input, OUT context):{
     consumeExtra(&input)
-    until(():{input == ""}, (1st_it):{
-        not(1st_it) && peekStr(input, ";") && {
+    until(():{input == ""}, (1st_it?):{
+        not(1st_it?) && peekStr(input, ";") && {
             discard(&input, 1)
             consumeExtra(&input)
         }

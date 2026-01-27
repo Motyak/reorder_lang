@@ -15,12 +15,12 @@ var discard (OUT input, n):{
     })
 }
 
-var consumeStr (OUT input, str):{
+-- var consumeStr (OUT input, str):{
     peekStr(input, str) || die("Failed to consume `" + str + "` in `" + input + "`")
     discard(&input, len(str))
 }
 
-var consumeOptStr (OUT input, optStr):{
+-- var consumeOptStr (OUT input, optStr):{
     peekStr(input, str) && {
         discard(&input, len(str))
     }
