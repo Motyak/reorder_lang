@@ -90,7 +90,7 @@ var .. (from, to):{
     dispatcher
 }
 
-var foreach {
+-- var foreach {
     var Container::foreach (OUT container, fn):{
         var nth 1
         until(():{nth > len(container)}, ():{

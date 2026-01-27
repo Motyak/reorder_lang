@@ -1,2 +1,2 @@
 # shellcheck shell=bash
-args=("2..4")
+args=("..3")

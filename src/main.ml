@@ -94,7 +94,7 @@ var .. (from, to):{
     dispatcher
 }
 
-var foreach {
+-- var foreach {
     var Container::foreach (OUT container, fn):{
         var nth 1
         until(():{nth > len(container)}, ():{
@@ -237,35 +237,42 @@ var consumeLineNb (OUT input):{
     var str tern(input == "", "", input[#1..<nth])
     str <> "" || die("Invalid line number in `" + input + "`")
     input := tern(nth > len(input), "", input[#nth..-1])
-    var lineNb parseInt(str)
+    var nb parseInt(str)
 
-    ['sign:sign, 'lineNb:lineNb]
+    ['sign:sign, 'nb:nb]
 }
 
 var interpretLineNb (_lineNb, OUT context):{
     var sign _lineNb.sign
-    var lineNb _lineNb.lineNb
+    var nb _lineNb.nb
 
-    foreach(context.currLineNb .. lineNb, (i):{
-        var line getline()
+    var case_sign CaseAnalysis((c):{sign == c})
+    case_sign("-", {
+        ;
+    })
 
-        "skip to first line number and print it"
-        not(context.succeedsRange?) && i == lineNb && {
-            print(line)
-        }
+    "'+' sign or no sign"
+    case_sign(_, {
+        let i context.currLineNb
+        var lineEnd tern(sign == "+", i, 0) + tern(context.exclusiveRange?, nb - 1, nb)
+        until(():{i == lineEnd}, (_):{
+            i += 1
+            var line getline()
 
-        "if succeeds range => print all, except last if exclusive range"
-        context.succeedsRange? && {
-            context.exclusiveRange? && i == lineNb || {
+            "skip to first line number and print it"
+            not(context.succeedsRange?) && i == lineEnd && {
                 print(line)
             }
-        }
 
-        context.currLineNb += 1
+            "print all"
+            context.succeedsRange? && {
+                print(line)
+            }
+        })
     })
 }
 
-var handleFullRange (OUT context):{
+var handleOpenEndRange (OUT context):{
     TODO
 }
 
@@ -308,7 +315,7 @@ var evalLines (OUT input, OUT context):{
                 consumeExtra(&input)
                 context.exclusiveRange? := $true
             }
-            handleFullRange(&context)
+            handleOpenEndRange(&context)
         })
     }
     ;
@@ -349,7 +356,7 @@ evalProgram := (OUT input, OUT context):{
 
 var prog $args[#1]
 var context [
-    'currLineNb => 1
+    'currLineNb => 0
     'succeedsRange? => $false
     'exclusiveRange? => $false
 ]
