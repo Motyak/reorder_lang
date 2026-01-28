@@ -317,12 +317,12 @@ var interpretLineNb (_lineNb, OUT context):{
 
         "skip to first line number and print it"
         not(context.succeedsRange?) && i == lineEnd && {
-            print(line)
+            line == $nil || print(line)
         }
 
         "print all"
         context.succeedsRange? && {
-            print(line)
+            line == $nil || print(line)
         }
     })
 }
@@ -336,6 +336,10 @@ var evalLines (OUT input, OUT context):{
     do_while((1st_it?):{
         1st_it? || {
             discard(&input, 1) -- ","
+            "make sure it's not a trailing comma"
+            peekLineNb(input) || peekStr(input, "..") || {
+                die("Trailing comma in `," + input + "`")
+            }
             consumeExtra(&input)
         }
 
