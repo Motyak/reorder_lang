@@ -5,6 +5,10 @@ var peekStr (input, str):{
     len(input) >= len_str && input[#1..len_str] == str
 }
 
+var peekAny (input, str):{
+    len(str) > 0 && input[#1] in str
+}
+
 ```
     supposed to do a peekStr() before a discard()
 ```
