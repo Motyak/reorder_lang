@@ -3,8 +3,10 @@
 source env.sh
 
 # execute individual tests
-tests/LINE-NB/*/1000.sh
+tests/*/*/1000.sh
 
-shopt -s globstar
+# execute all tests from a category
+for f in tests/RANGE/????/????.sh; do $f; done
+
 # execute all tests
-for f in tests/**/????.sh; do $f; done
+for f in tests/*/????/????.sh; do echo $f; done

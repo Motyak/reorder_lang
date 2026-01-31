@@ -27,11 +27,12 @@ var convertNegLineNb {
             i := context.currLineNb
             slurp_stdin()
             getline := ():{
-                len(lines) > 0 || die()
-                var line lines[#1]
-                lines := tern(len(lines) == 1, [], lines[#2..-1])
-                i += 1
-                line
+                tern(len(lines) == 0, $nil, {
+                    var line lines[#1]
+                    lines := tern(len(lines) == 1, [], lines[#2..-1])
+                    i += 1
+                    line
+                })
             }
             1st_time_called? := $false
         }
@@ -96,7 +97,9 @@ var interpretLineNb (_lineNb, OUT context, process):{
     until(():{i == lineEnd}, (_):{
         i += 1
         var line getline()
-        line == $nil && die("Out of bounds: `" + sign + nb + "`")
+        line == $nil && die("Out of bounds: `" + sign + nb + {
+            tern(context.exclusiveRange?, "[", "") + "`"
+        })
 
         "skip to first line number and process it"
         not(context.succeedsRange?) && i == lineEnd && process(line)
@@ -272,8 +275,6 @@ var evalCommand (OUT input, OUT context, processLine):{
         var lines? peekLineNb(input)
         lines? ||= peekStr(input, "..") || peekStr(input, "{")
         lines? || die("Unknown operation in `" + input + "`")
-        -- len(g_evalCommandStack) > 0 || die()
-        -- g_evalCommandStack[#-1] := evalLines(&input, &context, processLine)
         evalLines(&input, &context, processLine)
     })
 }
