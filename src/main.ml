@@ -291,21 +291,23 @@ var updateNegLineNb ():{die() -- "override from convertNegLineNb() didn't happen
                         lineEnd += 1 -- "cancels out future decrement (ugly)"
                     }
                 } -- "TODO: i suppose ?"
-                print("DEBUG lines " + lines)
+                var first_call $true
                 getline := ():{
-                    {
-                        var line builtin::getline()
-                        line == $nil || {
-                            lines += [line]
-                            lineEnd += 1 -- make the end one step further
-                        }
+                    print("DEBUG lines " + lines)
+                    var line builtin::getline()
+                    line == $nil || {
+                        lines += [line]
+                        lineEnd += 1 -- make the end one step further
                     }
-                    tern(len(lines) == 0, $nil, {
+                    var res tern(len(lines) == 0 || first_call && line == $nil, $nil, {
                         var line lines[#1]
                         lines := tern(len(lines) == 1, [], lines[#2..-1])
                         i += 1
                         line
                     })
+
+                    first_call := $false
+                    res
                 }
                 updateNegLineNb := (OUT _lineEnd):{
                     _lineEnd := lineEnd
@@ -376,7 +378,7 @@ var interpretLineNb (_lineNb, OUT context, process):{
 
     print("DEBUG i", i)
     print("DEBUG lineEnd", lineEnd)
-    exit(123)
+    -- exit(123)
     until(():{i == lineEnd}, (_):{
         i += 1
         var line getline()
