@@ -230,8 +230,11 @@ var getline getline -- make it overridable
 "stack of stacks (for nested programs)"
 var g_stacks []
 
-var convertNegLineNb {
-    var lines []
+var convertNegLineNb _
+var interpretNegLineNbGradually _
+{
+    var lines [] -- buffer
+
     var slurp_stdin _
     slurp_stdin := ():{
         var line builtin::getline()
@@ -243,7 +246,7 @@ var convertNegLineNb {
 
     var i _
     var 1st_time_called? $true
-    var convertNegLineNb (nb, context):{
+    convertNegLineNb := (nb, context):{
         1st_time_called? && {
             i := context.currLineNb
             slurp_stdin()
@@ -257,10 +260,71 @@ var convertNegLineNb {
             }
             1st_time_called? := $false
         }
-        nb <= len(lines) || die("Out of bounds: `-" + nb + "`")
+        -- nb <= len(lines) || die("Out of bounds: `-" + nb + "`") -- "TODO: remove ?"
         i + len(lines) - nb + 1
     }
-    convertNegLineNb
+
+    interpretNegLineNbGradually := (_lineNb, OUT context, process):{
+        var sign _lineNb.sign
+        var nb _lineNb.nb
+        let i context.currLineNb
+
+        "create buffer"
+        {
+            var n tern(context.exclusiveRange?, nb, nb - 1)
+            var i 1
+            var loop _
+            loop := ():{
+                i > n || {
+                    var line builtin::getline()
+                    line == $nil || {
+                        lines += [line]
+                        i += 1
+                        _ := loop()
+                    }
+                    i := n -- break the loop
+                }
+            }
+            loop()
+
+            len(lines) < n && die("Out of bounds: `-" + nb + {
+                tern(context.exclusiveRange?, "[", "") + "`"
+            })
+        }
+
+        {
+            -- var entered_loop? $false
+            var loop _
+            loop := ():{
+                var line builtin::getline()
+                line == $nil || {
+                    -- entered_loop? := $true
+                    lines += [line]
+                    process(lines[#1])
+                    lines := tern(len(lines) == 1, [], lines[#2..-1])
+                    i += 1
+                    _ := loop()
+                }
+                -- entered_loop? || die("Out of bounds: `-" + nb + {
+                    tern(context.exclusiveRange?, "[", "") + "`"
+                })
+            }
+            loop()
+        }
+
+        getline := ():{
+            len(lines) == 0 && {
+                var line builtin::getline()
+                line == $nil || {lines += [line]}
+            }
+            tern(len(lines) == 0, $nil, {
+                var line lines[#1]
+                lines := tern(len(lines) == 1, [], lines[#2..-1])
+                -- i += 1 -- "we DONT increment it, caller will"
+                line
+            })
+        }
+    }
 }
 
 
@@ -302,7 +366,8 @@ var consumeLineNb (OUT input):{
     ['sign:sign, 'nb:nb]
 }
 
-var interpretLineNb (_lineNb, OUT context, process):{
+"handle anything else than gradual neg line nb"
+var _interpretLineNb (_lineNb, OUT context, process):{
     var sign _lineNb.sign
     var nb _lineNb.nb
     let i context.currLineNb
@@ -328,6 +393,25 @@ var interpretLineNb (_lineNb, OUT context, process):{
         "process all"
         context.succeedsRange? && process(line)
     })
+}
+
+var interpretLineNb {
+    var 1stNegLineNb? $true
+
+    var interpretLineNb (lineNb, OUT context, process):{
+        var gradualMode {
+            1stNegLineNb? && lineNb.sign == "-" && context.succeedsRange?
+        }
+        gradualMode && {
+            interpretNegLineNbGradually(lineNb, &context, process)
+        }
+        gradualMode || {
+            _interpretLineNb(lineNb, &context, process)
+        }
+        lineNb.sign == "-" && {1stNegLineNb? := $false}
+    }
+
+    interpretLineNb
 }
 
 var evalLineNb (OUT input, OUT context, process):{
