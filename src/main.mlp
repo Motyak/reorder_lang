@@ -9,37 +9,86 @@ var getline getline -- make it overridable
 "stack of stacks (for nested programs)"
 var g_stacks []
 
-var convertNegLineNb {
+var convertNegLineNb _
+var updateNegLineNb ():{die() -- "override from convertNegLineNb() didn't happen"}
+{
     var lines []
     var slurp_stdin _
     slurp_stdin := ():{
         var line builtin::getline()
         line == $nil || {
-            lines += line
+            lines += [line]
             _ := slurp_stdin()
         }
     }
 
     var i _
+    var lineEnd _
     var 1st_time_called? $true
-    var convertNegLineNb (nb, context):{
+    convertNegLineNb := (nb, context):{
         1st_time_called? && {
             i := context.currLineNb
-            slurp_stdin()
-            getline := ():{
-                tern(len(lines) == 0, $nil, {
-                    var line lines[#1]
-                    lines := tern(len(lines) == 1, [], lines[#2..-1])
-                    i += 1
-                    line
-                })
+            context.succeedsRange? || {
+                slurp_stdin()
+                getline := ():{
+                    tern(len(lines) == 0, $nil, {
+                        var line lines[#1]
+                        lines := tern(len(lines) == 1, [], lines[#2..-1])
+                        i += 1
+                        line
+                    })
+                }
+            }
+            context.succeedsRange? && {
+                ```
+                    we only need to consume ahead <nb> lines..
+                    .., and refresh the buffer on each new line so that..
+                    ..it contains, at all time, the latest <nb> lines.
+                    IF it's an exclusive range, we need one more line than <nb>.
+                ```
+                var n tern(context.exclusiveRange?, nb + 1, nb)
+                {
+                    var i 1
+                    var loop _
+                    loop := ():{
+                        i > n || {
+                            var line builtin::getline()
+                            line == $nil || {
+                                lines += [line]
+                                i += 1
+                                _ := loop()
+                            }
+                            i := n + 1 -- break the loop
+                        }
+                    }
+                    loop()
+                }
+                -- print("DEBUG lines: " + lines)
+                lineEnd := tern(n > len(lines), i, i + 1)
+                getline := ():{
+                    tern(len(lines) == 0, $nil, {
+                        var line lines[#1]
+                        lines := tern(len(lines) == 1, [], lines[#2..-1])
+                        i += 1
+                        {
+                            var line builtin::getline()
+                            line == $nil || {
+                                lines += [line]
+                                lineEnd += 1 -- make the end one step further
+                            }
+                        }
+                        line
+                    })
+                }
+                updateNegLineNb := (OUT _lineEnd):{
+                    _lineEnd := lineEnd
+                }
             }
             1st_time_called? := $false
         }
         nb <= len(lines) || die("Out of bounds: `-" + nb + "`")
         i + len(lines) - nb + 1
     }
-    convertNegLineNb
 }
 
 
@@ -88,12 +137,16 @@ var interpretLineNb (_lineNb, OUT context, process):{
 
     var lineEnd {
         var lineEnd nb
+        "special case for negative line nb: line end may be temporary.."
+        "..rather than definite (see updateNegLineNb())"
         sign == "-" && {lineEnd := convertNegLineNb(lineEnd, context)}
         context.exclusiveRange? && {lineEnd -= 1}
         sign == "+" && {lineEnd := i + lineEnd}
         lineEnd
     }
 
+    -- print("DEBUG i", i)
+    -- print("DEBUG lineEnd", lineEnd)
     until(():{i == lineEnd}, (_):{
         i += 1
         var line getline()
@@ -106,6 +159,12 @@ var interpretLineNb (_lineNb, OUT context, process):{
 
         "process all"
         context.succeedsRange? && process(line)
+
+        sign == "-" && context.succeedsRange? && {
+            updateNegLineNb(&lineEnd)
+        }
+        -- print("DEBUG i", i)
+        -- print("DEBUG lineEnd", lineEnd)
     })
 }
 
