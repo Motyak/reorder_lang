@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # This script is intended to be symlinked by test script files
-#   -> tests/**/{1000,1100,...}.sh
+#   -> tests/compare_output/**/{1000,1100,...}.sh
 
 set -o errexit
 set -o nounset

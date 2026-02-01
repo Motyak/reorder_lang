@@ -1,0 +1,2 @@
+tests/check_proper_io_flow/ioflow/fifo
+tests/check_proper_io_flow/ioflow/main.elf

@@ -1,0 +1,15 @@
+
+g++ --std=c++23 main.cpp -o main.elf
+mkfifo fifo
+
+---
+
+echo -e "1\n2\n3" | ./main.elf fifo | cat > fifo
+
+echo -e "1\n2\n3" | ./main.elf fifo | { for i in {1..3}; do read -r line; done; echo "fds"; } > fifo
+
+# fixed in d/
+echo "message" | ./main.elf fifo | { read -r line; sleep 1; echo "orphan_response"; } > fifo
+
+#fixed in e/
+echo -e "1\n2\n3" | ./main.elf fifo | { read -r line; echo "fds"; } > fifo

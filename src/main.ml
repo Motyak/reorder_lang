@@ -260,7 +260,6 @@ var interpretNegLineNbGradually _
             }
             1st_time_called? := $false
         }
-        -- nb <= len(lines) || die("Out of bounds: `-" + nb + "`") -- "TODO: remove ?"
         i + len(lines) - nb + 1
     }
 
