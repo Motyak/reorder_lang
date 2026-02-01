@@ -268,6 +268,7 @@ var updateNegLineNb ():{die() -- "override from convertNegLineNb() didn't happen
                     IF it's an exclusive range, we need one more line than <nb>.
                 ```
                 var n tern(context.exclusiveRange?, nb + 1, nb)
+                n -= 1 -- "because we will complete the buffer at the beginning of getline()"
                 {
                     var i 1
                     var loop _
@@ -284,20 +285,25 @@ var updateNegLineNb ():{die() -- "override from convertNegLineNb() didn't happen
                     }
                     loop()
                 }
-                -- print("DEBUG lines: " + lines)
-                lineEnd := tern(n > len(lines), i, i + 1)
+                {
+                    lineEnd := tern(len(lines) < n, i -- trigger out of bounds, i + 1)
+                    context.exclusiveRange? && {
+                        lineEnd += 1 -- "cancels out future decrement (ugly)"
+                    }
+                } -- "TODO: i suppose ?"
+                print("DEBUG lines " + lines)
                 getline := ():{
+                    {
+                        var line builtin::getline()
+                        line == $nil || {
+                            lines += [line]
+                            lineEnd += 1 -- make the end one step further
+                        }
+                    }
                     tern(len(lines) == 0, $nil, {
                         var line lines[#1]
                         lines := tern(len(lines) == 1, [], lines[#2..-1])
                         i += 1
-                        {
-                            var line builtin::getline()
-                            line == $nil || {
-                                lines += [line]
-                                lineEnd += 1 -- make the end one step further
-                            }
-                        }
                         line
                     })
                 }
@@ -307,8 +313,10 @@ var updateNegLineNb ():{die() -- "override from convertNegLineNb() didn't happen
             }
             1st_time_called? := $false
         }
-        nb <= len(lines) || die("Out of bounds: `-" + nb + "`")
-        i + len(lines) - nb + 1
+        -- nb <= len(lines) || die("Out of bounds: `-" + nb + "`") -- "TODO: tmp"
+        tern(lineEnd <> $nil, lineEnd, {
+            i + len(lines) - nb + 1
+        })
     }
 }
 
@@ -366,8 +374,9 @@ var interpretLineNb (_lineNb, OUT context, process):{
         lineEnd
     }
 
-    -- print("DEBUG i", i)
-    -- print("DEBUG lineEnd", lineEnd)
+    print("DEBUG i", i)
+    print("DEBUG lineEnd", lineEnd)
+    exit(123)
     until(():{i == lineEnd}, (_):{
         i += 1
         var line getline()
@@ -384,8 +393,8 @@ var interpretLineNb (_lineNb, OUT context, process):{
         sign == "-" && context.succeedsRange? && {
             updateNegLineNb(&lineEnd)
         }
-        -- print("DEBUG i", i)
-        -- print("DEBUG lineEnd", lineEnd)
+        print("DEBUG i", i)
+        print("DEBUG lineEnd", lineEnd)
     })
 }
 
