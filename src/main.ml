@@ -239,7 +239,7 @@ var interpretNegLineNbGradually _
     slurp_stdin := ():{
         var line builtin::getline()
         line == $nil || {
-            lines += line
+            lines += [line]
             _ := slurp_stdin()
         }
     }
@@ -281,32 +281,25 @@ var interpretNegLineNbGradually _
                         i += 1
                         _ := loop()
                     }
-                    i := n -- break the loop
                 }
             }
             loop()
-
             len(lines) < n && die("Out of bounds: `-" + nb + {
                 tern(context.exclusiveRange?, "[", "") + "`"
             })
         }
 
         {
-            -- var entered_loop? $false
             var loop _
             loop := ():{
                 var line builtin::getline()
                 line == $nil || {
-                    -- entered_loop? := $true
                     lines += [line]
                     process(lines[#1])
                     lines := tern(len(lines) == 1, [], lines[#2..-1])
                     i += 1
                     _ := loop()
                 }
-                -- entered_loop? || die("Out of bounds: `-" + nb + {
-                    tern(context.exclusiveRange?, "[", "") + "`"
-                })
             }
             loop()
         }
@@ -394,23 +387,21 @@ var _interpretLineNb (_lineNb, OUT context, process):{
     })
 }
 
-var interpretLineNb {
-    var 1stNegLineNb? $true
-
-    var interpretLineNb (lineNb, OUT context, process):{
-        var gradualMode {
-            1stNegLineNb? && lineNb.sign == "-" && context.succeedsRange?
-        }
-        gradualMode && {
-            interpretNegLineNbGradually(lineNb, &context, process)
-        }
-        gradualMode || {
-            _interpretLineNb(lineNb, &context, process)
-        }
-        lineNb.sign == "-" && {1stNegLineNb? := $false}
+var interpretLineNb _
+interpretLineNb := (lineNb, OUT context, process):{
+    var gradualMode {
+        lineNb.sign == "-" && context.succeedsRange?
     }
-
-    interpretLineNb
+    gradualMode && {
+        interpretNegLineNbGradually(lineNb, &context, process)
+    }
+    gradualMode || {
+        _interpretLineNb(lineNb, &context, process)
+    }
+    lineNb.sign == "-" && {
+        "gradual mode can't happen anymore => no longer need to check"
+        interpretLineNb := _interpretLineNb
+    }
 }
 
 var evalLineNb (OUT input, OUT context, process):{
@@ -473,7 +464,7 @@ var evalLines (OUT input, OUT context, processLine):{
 var evalStackOp (OUT input, OUT context):{
     var processLine (line):{
         len(g_stacks) > 0 || die()
-        g_stacks[#-1] += line
+        g_stacks[#-1] += [line]
     }
 
     discard(&input, 1) -- "s"
@@ -606,6 +597,6 @@ evalProgram := (OUT input, OUT context, processLine):{
     ]
     var processLine print
 
-    evalProgram(&prog, &context, processLine)
+    evalProgram(prog, context, processLine)
 }
 

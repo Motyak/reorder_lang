@@ -4,8 +4,8 @@ source env.sh
 
 shopt -s globstar
 # execute individual tests
-tests/**/1000.sh
-tests/**/{1000,1201}.sh
+for f in tests/**/1000.sh; do $f; done
+for f in tests/**/{1000,1201}.sh; do $f; done
 
 # execute all tests from a category
 for f in tests/**/RANGE/**/????.sh; do $f; done
