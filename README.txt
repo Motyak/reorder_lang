@@ -2,14 +2,19 @@
 # VERY IMPORTANT (to export required variables)
 source env.sh
 
-shopt -s globstar
 # execute individual tests
-for f in tests/**/1000.sh; do $f; done
-for f in tests/**/{1000,1201}.sh; do $f; done
+runtests tests/**/1000.sh
+runtests tests/**/{1000,1201}.sh
 
 # execute all tests from a category
-for f in tests/**/RANGE/**/????.sh; do $f; done
-for f in tests/**/compare_output/**/????.sh; do $f; done
+runtests tests/**/RANGE/**/????.sh
+runtests tests/**/compare_output/**/????.sh
 
 # execute all tests
-for f in tests/**/????.sh; do $f; done
+runtests tests/**/????.sh
+
+# stop after maxerr=n errors (default is 1)
+maxerr=-1 runtests tests/**/????.sh # keep going whatsoever
+
+# execute all tests from root directory (env.sh parent dir)
+runtests # cwd doesn't matter when no args are specified

@@ -25,6 +25,6 @@ prog_out="$("$PROG" "${args[@]}" < "${test}.in.txt" && echo -n x)"
 [ ${diffcode:-0} -eq 2 ] && err 2
 [ ${diffcode:-0} -eq 1 ] && {
     echo "=== ❌ $test ==="
-    git --no-pager diff --no-index "${test}.out.txt" <(printf "%s" "$prog_out" | head -n-1) || exit 0
+    git --no-pager diff --no-index "${test}.out.txt" <(printf "%s" "$prog_out" | head -n-1) || exit 1
 }
 echo "=== ✅ $test ==="

@@ -31,6 +31,6 @@ prog_out=$({ ../ioflow/main.elf ../ioflow/fifo < "${test}.in.txt" | "$PROG" "${a
 [ ${diffcode:-0} -eq 2 ] && err 2
 [ ${diffcode:-0} -eq 1 ] && {
     echo "=== ❌ $test ==="
-    git --no-pager diff --no-index "${test}.out.txt" <(echo "$prog_out") || exit 0
+    git --no-pager diff --no-index "${test}.out.txt" <(echo "$prog_out") || exit 1
 }
 echo "=== ✅ $test ==="

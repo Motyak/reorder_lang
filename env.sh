@@ -12,9 +12,21 @@ function __doit {
         return \${exit_code:-0}
     }
     "
+
+    eval "
+    function runtests {
+        local maxerr=\${maxerr:-1}
+        for f in \${@:-\"${SCRIPT_DIR}\"/tests/**/????.sh}; do
+            ((maxerr)) && { \$f || ((maxerr-=1)); }
+        done
+    }
+    "
+
     export -f preprocess_prog
 }
 
 __doit
 
 unset -f __doit
+
+shopt -s globstar # **
