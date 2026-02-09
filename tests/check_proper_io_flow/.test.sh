@@ -11,6 +11,7 @@ trap err ERR
 function err {
     exit_code=${1:-$?}
     [ "$test" != "" ] && >&2 echo "Test $test couldn't be performed"
+    [ "$prog_out" != "" ] && >&2 echo -e "STDERR was:\n${prog_out}"
     exit $exit_code
 }
 

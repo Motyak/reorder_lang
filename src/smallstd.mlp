@@ -5,7 +5,7 @@ var tern (cond, if_true, if_false):{
     res
 }
 
--- var !tern (cond, if_false, if_true):{
+var !tern (cond, if_false, if_true):{
     tern(cond, if_true, if_false)
 }
 

@@ -9,7 +9,7 @@ var tern (cond, if_true, if_false):{
     res
 }
 
--- var !tern (cond, if_false, if_true):{
+var !tern (cond, if_false, if_true):{
     tern(cond, if_true, if_false)
 }
 
@@ -547,12 +547,26 @@ var evalUnstackOp (OUT input, OUT context, processLine):{
     discard(&input, 1) -- "S"
     consumeExtra(&input)
 
+    len(g_stacks) > 0 || die()
     let currStack g_stacks[#-1]
-    len(g_stacks) > 0 && len(currStack) > 0 || {
-        die("Unstacking an empty stack at `" + input + "`")
-    }
-    processLine(currStack[#-1])
-    currStack := currStack[#1..<-1]
+    var peek CaseAnalysis((c):{peekStr(input, c)})
+
+    peek("*", {
+        discard(&input, 1) -- "*"
+        consumeExtra(&input)
+        until(():{len(currStack) == 0}, (_):{
+            processLine(currStack[#-1])
+            currStack := currStack[#1..<-1]
+        })
+    })
+
+    peek(_, {
+        len(currStack) > 0 || {
+            die("Unstacking an empty stack at `" + input + "`")
+        }
+        processLine(currStack[#-1])
+        currStack := currStack[#1..<-1]
+    })
 }
 
 var evalCommand (OUT input, OUT context, processLine):{
