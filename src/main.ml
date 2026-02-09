@@ -110,10 +110,10 @@ var .. (from, to):{
     dispatcher
 }
 
--- var foreach {
+var foreach {
     var Container::foreach (OUT container, fn):{
         var nth 1
-        until(():{nth > len(container)}, ():{
+        until(():{nth > len(container)}, (_):{
             fn(&container[#nth])
             nth += 1
         })
@@ -417,11 +417,11 @@ var evalLines (OUT input, OUT context, processLine):{
     do_while((1st_it?):{
         1st_it? || {
             discard(&input, 1) -- ","
+            consumeExtra(&input)
             "make sure it's not a trailing comma"
             peekLineNb(input) || peekStr(input, "..") || {
                 die("Trailing comma in `," + input + "`")
             }
-            consumeExtra(&input)
         }
 
         peekLineNb(input) && {
@@ -475,19 +475,32 @@ var evalStackOp (OUT input, OUT context):{
     do_while((1st_it?):{
         1st_it? || {
             discard(&input, 1) -- ","
+            consumeExtra(&input)
             "make sure it's not a trailing comma"
             peekLineNb(input) || peekStr(input, "..") || {
                 peekAny(input, "{(") || {
                     die("Trailing comma in `," + input + "`")
                 }
             }
-            consumeExtra(&input)
         }
 
         var peek CaseAnalysis((c):{peekStr(input, c)})
 
         peek("(", {
-            ; "TODO: will eval Lines"
+            discard(&input, 1) -- "("
+
+            var groupedLines []
+            var processLine (line):{
+                groupedLines += [line]
+            }
+            evalLines(&input, &context, processLine)
+
+            peekStr(input, ")") || {
+                die("Missing closing parentheses in `" + input + "`")
+            }
+            discard(&input, 1) -- ")"
+
+            g_stacks[#-1] += [groupedLines]
         })
 
         peek("{", {
@@ -557,7 +570,13 @@ var evalUnstackOp (OUT input, OUT context, processLine):{
         discard(&input, 1) -- "*"
         consumeExtra(&input)
         until(():{len(currStack) == 0}, (_):{
-            processLine(currStack[#-1])
+            $type(currStack[#-1]) == 'List && {
+                foreach(currStack[#-1], processLine)
+                ;
+            }
+            $type(currStack[#-1]) == 'Str && {
+                processLine(currStack[#-1])
+            }
             currStack := currStack[#1..<-1]
         })
     })
@@ -566,7 +585,13 @@ var evalUnstackOp (OUT input, OUT context, processLine):{
         len(currStack) > 0 || {
             die("Unstacking an empty stack at `" + input + "`")
         }
-        processLine(currStack[#-1])
+        $type(currStack[#-1]) == 'List && {
+            foreach(currStack[#-1], processLine)
+            ;
+        }
+        $type(currStack[#-1]) == 'Str && {
+            processLine(currStack[#-1])
+        }
         currStack := currStack[#1..<-1]
     })
 }
@@ -583,13 +608,13 @@ var evalQueueOp (OUT input, OUT context):{
     do_while((1st_it?):{
         1st_it? || {
             discard(&input, 1) -- ","
+            consumeExtra(&input)
             "make sure it's not a trailing comma"
             peekLineNb(input) || peekStr(input, "..") || {
                 peekAny(input, "{(") || {
                     die("Trailing comma in `," + input + "`")
                 }
             }
-            consumeExtra(&input)
         }
 
         var peek CaseAnalysis((c):{peekStr(input, c)})
