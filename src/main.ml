@@ -227,11 +227,6 @@ var discard (OUT input, n):{
 var builtin::getline getline
 var getline getline -- make it overridable
 
-"stack of stacks (for nested programs)"
-var g_stacks []
-"stack of queues (for nested programs)"
-var g_queues []
-
 var convertNegLineNb _
 var interpretNegLineNbGradually _
 {
@@ -465,8 +460,8 @@ var evalLines (OUT input, OUT context, processLine):{
 
 var evalStackOp (OUT input, OUT context):{
     var processLine (line):{
-        len(g_stacks) > 0 || die()
-        g_stacks[#-1] += [line]
+        len(context.stacks) > 0 || die()
+        context.stacks[#-1] += [line]
     }
 
     discard(&input, 1) -- "s"
@@ -500,7 +495,7 @@ var evalStackOp (OUT input, OUT context):{
             }
             discard(&input, 1) -- ")"
 
-            g_stacks[#-1] += [groupedLines]
+            context.stacks[#-1] += [groupedLines]
         })
 
         peek("{", {
@@ -562,8 +557,8 @@ var evalUnstackOp (OUT input, OUT context, processLine):{
     discard(&input, 1) -- "S"
     consumeExtra(&input)
 
-    len(g_stacks) > 0 || die()
-    let currStack g_stacks[#-1]
+    len(context.stacks) > 0 || die()
+    let currStack context.stacks[#-1]
     var peek CaseAnalysis((c):{peekStr(input, c)})
 
     peek("*", {
@@ -598,8 +593,8 @@ var evalUnstackOp (OUT input, OUT context, processLine):{
 
 var evalQueueOp (OUT input, OUT context):{
     var processLine (line):{
-        len(g_queues) > 0 || die()
-        g_queues[#-1] += [line]
+        len(context.queues) > 0 || die()
+        context.queues[#-1] += [line]
     }
 
     discard(&input, 1) -- "q"
@@ -682,8 +677,8 @@ var evalUnqueueOp (OUT input, OUT context, processLine):{
     discard(&input, 1) -- "Q"
     consumeExtra(&input)
 
-    len(g_queues) > 0 || die()
-    let currStack g_queues[#-1]
+    len(context.queues) > 0 || die()
+    let currStack context.queues[#-1]
     var peek CaseAnalysis((c):{peekStr(input, c)})
 
     peek("*", {
@@ -720,8 +715,8 @@ var evalCommand (OUT input, OUT context, processLine):{
 }
 
 evalProgram := (OUT input, OUT context, processLine):{
-    g_stacks += [[]]
-    g_queues += [[]]
+    context.stacks += [[]]
+    context.queues += [[]]
     consumeExtra(&input)
     until(():{input == ""}, (1st_it?):{
         not(1st_it?) && peekStr(input, ";") && {
@@ -731,14 +726,16 @@ evalProgram := (OUT input, OUT context, processLine):{
         evalCommand(&input, &context, processLine)
         consumeExtra(&input)
     })
-    g_stacks := g_stacks[#1..<-1]
-    g_queues := g_queues[#1..<-1]
+    context.stacks := context.stacks[#1..<-1]
+    context.queues := context.queues[#1..<-1]
 }
 
 {
     var prog $args[#1]
     var context [
         'currLineNb => 0
+        'stacks => [] -- "stack of stacks (for nested programs)"
+        'queues => [] -- "stack of queues (for nested programs)"
         'succeedsRange? => $false
         'exclusiveRange? => $false
     ]
