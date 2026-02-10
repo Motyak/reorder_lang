@@ -1,299 +1,250 @@
 #!/usr/bin/env monlang
+```
+    ReOrder Lang (rol)
+    ------------------
+
+    PROGRAM := (COMMAND (';'? COMMAND)*)?
+
+    COMMAND := STACK-OP | UNSTACK-OP
+            | QUEUE-OP | UNQUEUE-OP
+            | LINES
+
+    SUB-PROGRAM := '{' PROGRAM '}'
+    LINES := (LINE-NB | RANGE | SUB-PROGRAM)
+        | (LINE-NB | RANGE | SUB-PROGRAM) ',' LINES
+    GROUPED-LINES := '(' LINES ')'
+
+    RANGE := LINE-NB? '..' LINE-NB? '['?
+    LINE-NB := ('-' | '+')? [0-9]+
+
+    STACK-OP := 's' (
+                    (LINE-NB | RANGE | SUB-PROGRAM | GROUPED-LINES)
+                    (',' (LINE-NB | RANGE | SUB-PROGRAM | GROUPED-LINES))*
+                )?
+
+    UNSTACK-OP := 'S' '*'?
+
+    QUEUE-OP := 'q' (
+                    (LINE-NB | RANGE | SUB-PROGRAM | GROUPED-LINES)
+                    (',' (LINE-NB | RANGE | SUB-PROGRAM | GROUPED-LINES))*
+                )?
+
+    UNQUEUE-OP := 'Q' '*'?
+```
 
 include <smallstd.mlp>
 include <utils/parsing.mlp>
 
-var builtin::getline getline
-var getline getline -- make it overridable
-
-var convertNegLineNb _
-var interpretNegLineNbGradually _
+var rol::evalProgram _
+var rol::evalCommand _
+var rol::evalStackOp _
+var rol::evalUnstackOp _
+var rol::evalQueueOp _
+var rol::evalUnqueueOp _
+var rol::evalLines _
+var rol::evalLineNb _
 {
-    var lines [] -- buffer
+    var builtin::getline getline
+    var getline getline -- make it overridable
 
-    var slurp_stdin _
-    slurp_stdin := ():{
-        var line builtin::getline()
-        line == $nil || {
-            lines += [line]
-            _ := slurp_stdin()
+    var convertNegLineNb _
+    var interpretNegLineNbGradually _
+    var setup_rol ():{
+        var lines [] -- buffer
+
+        var slurp_stdin _
+        slurp_stdin := ():{
+            var line builtin::getline()
+            line == $nil || {
+                lines += [line]
+                _ := slurp_stdin()
+            }
         }
-    }
 
-    var i _
-    var 1st_time_called? $true
-    convertNegLineNb := (nb, context):{
-        1st_time_called? && {
-            i := context.currLineNb
-            slurp_stdin()
-            getline := ():{
-                tern(len(lines) == 0, $nil, {
-                    var line lines[#1]
-                    lines := tern(len(lines) == 1, [], lines[#2..-1])
-                    i += 1
-                    line
+        var i _
+        var 1st_time_called? $true
+        convertNegLineNb := (nb, context):{
+            1st_time_called? && {
+                i := context.currLineNb
+                slurp_stdin()
+                getline := ():{
+                    tern(len(lines) == 0, $nil, {
+                        var line lines[#1]
+                        lines := tern(len(lines) == 1, [], lines[#2..-1])
+                        i += 1
+                        line
+                    })
+                }
+                1st_time_called? := $false
+            }
+            i + len(lines) - nb + 1
+        }
+
+        interpretNegLineNbGradually := (_lineNb, OUT context, process):{
+            var sign _lineNb.sign
+            var nb _lineNb.nb
+            let i context.currLineNb
+
+            "create buffer"
+            {
+                var n tern(context.exclusiveRange?, nb, nb - 1)
+                var i 1
+                var loop _
+                loop := ():{
+                    i > n || {
+                        var line builtin::getline()
+                        line == $nil || {
+                            lines += [line]
+                            i += 1
+                            _ := loop()
+                        }
+                    }
+                }
+                loop()
+                len(lines) < n && die("Out of bounds: `-" + nb + {
+                    tern(context.exclusiveRange?, "[", "") + "`"
                 })
             }
-            1st_time_called? := $false
-        }
-        i + len(lines) - nb + 1
-    }
 
-    interpretNegLineNbGradually := (_lineNb, OUT context, process):{
-        var sign _lineNb.sign
-        var nb _lineNb.nb
-        let i context.currLineNb
-
-        "create buffer"
-        {
-            var n tern(context.exclusiveRange?, nb, nb - 1)
-            var i 1
-            var loop _
-            loop := ():{
-                i > n || {
+            {
+                var loop _
+                loop := ():{
                     var line builtin::getline()
                     line == $nil || {
                         lines += [line]
+                        process(lines[#1])
+                        lines := tern(len(lines) == 1, [], lines[#2..-1])
                         i += 1
                         _ := loop()
                     }
                 }
+                loop()
             }
-            loop()
-            len(lines) < n && die("Out of bounds: `-" + nb + {
-                tern(context.exclusiveRange?, "[", "") + "`"
-            })
-        }
 
-        {
-            var loop _
-            loop := ():{
-                var line builtin::getline()
-                line == $nil || {
-                    lines += [line]
-                    process(lines[#1])
-                    lines := tern(len(lines) == 1, [], lines[#2..-1])
-                    i += 1
-                    _ := loop()
+            getline := ():{
+                len(lines) == 0 && {
+                    var line builtin::getline()
+                    line == $nil || {lines += [line]}
                 }
+                tern(len(lines) == 0, $nil, {
+                    var line lines[#1]
+                    lines := tern(len(lines) == 1, [], lines[#2..-1])
+                    -- i += 1 -- "we DONT increment it, caller will"
+                    line
+                })
             }
-            loop()
         }
-
-        getline := ():{
-            len(lines) == 0 && {
-                var line builtin::getline()
-                line == $nil || {lines += [line]}
-            }
-            tern(len(lines) == 0, $nil, {
-                var line lines[#1]
-                lines := tern(len(lines) == 1, [], lines[#2..-1])
-                -- i += 1 -- "we DONT increment it, caller will"
-                line
-            })
-        }
-    }
-}
+    } -- "END of setup_rol"
 
 
-var consumeExtra (OUT input):{
-    var extras "\n" + " " + Byte(9)
-    var nth 1
-    until(():{nth > len(input) || input[#nth] !in extras}, (_):{
-        nth += 1
-    })
-
-    input := tern(nth > len(input), "", input[#nth..-1])
-}
-
-var peekLineNb (input):{
-    len(input) >= 1 && (input[#1] in "+-" || input[#1] in '0 .. '9)
-}
-
-var consumeLineNb (OUT input):{
-    len(input) >= 1 || die()
-
-    var sign ""
-    input[#1] in "+-" && {
-        len(input) >= 2 || die("Invalid line number in `" + input + "`")
-        input[#2] in '0 .. '9 || die("Invalid line number in `" + input + "`")
-        sign := input[#1]
-        input := input[#2..-1]
-    }
-
-    var nth 1
-    until(():{nth > len(input) || input[#nth] !in '0 .. '9}, (_):{
-        nth += 1
-    })
-    
-    var str tern(input == "", "", input[#1..<nth])
-    str <> "" || die("Invalid line number in `" + input + "`")
-    input := tern(nth > len(input), "", input[#nth..-1])
-    var nb parseInt(str)
-
-    ['sign:sign, 'nb:nb]
-}
-
-"handle anything else than gradual neg line nb"
-var _interpretLineNb (_lineNb, OUT context, process):{
-    var sign _lineNb.sign
-    var nb _lineNb.nb
-    let i context.currLineNb
-
-    var lineEnd {
-        var lineEnd nb
-        sign == "-" && {lineEnd := convertNegLineNb(lineEnd, context)}
-        context.exclusiveRange? && {lineEnd -= 1}
-        sign == "+" && {lineEnd := i + lineEnd}
-        lineEnd
-    }
-
-    until(():{i == lineEnd}, (_):{
-        i += 1
-        var line getline()
-        line == $nil && die("Out of bounds: `" + sign + nb + {
-            tern(context.exclusiveRange?, "[", "") + "`"
+    var consumeExtra (OUT input):{
+        var extras "\n" + " " + Byte(9)
+        var nth 1
+        until(():{nth > len(input) || input[#nth] !in extras}, (_):{
+            nth += 1
         })
 
-        "skip to first line number and process it"
-        not(context.succeedsRange?) && i == lineEnd && process(line)
-
-        "process all"
-        context.succeedsRange? && process(line)
-    })
-}
-
-var interpretLineNb _
-interpretLineNb := (lineNb, OUT context, process):{
-    var gradualMode {
-        lineNb.sign == "-" && context.succeedsRange?
+        input := tern(nth > len(input), "", input[#nth..-1])
     }
-    gradualMode && {
-        interpretNegLineNbGradually(lineNb, &context, process)
-    }
-    gradualMode || {
-        _interpretLineNb(lineNb, &context, process)
-    }
-    lineNb.sign == "-" && {
-        "gradual mode can't happen anymore => no longer need to check"
-        interpretLineNb := _interpretLineNb
-    }
-}
 
-var evalLineNb (OUT input, OUT context, process):{
-    var lineNb consumeLineNb(&input)
-    interpretLineNb(lineNb, &context, process)
-}
+    var peekLineNb (input):{
+        len(input) >= 1 && (input[#1] in "+-" || input[#1] in '0 .. '9)
+    }
 
-var evalProgram _
+    var consumeLineNb (OUT input):{
+        len(input) >= 1 || die()
 
-var evalLines (OUT input, OUT context, processLine):{
-    do_while((1st_it?):{
-        1st_it? || {
-            discard(&input, 1) -- ","
-            consumeExtra(&input)
-            "make sure it's not a trailing comma"
-            peekLineNb(input) || peekStr(input, "..") || {
-                die("Trailing comma in `," + input + "`")
-            }
+        var sign ""
+        input[#1] in "+-" && {
+            len(input) >= 2 || die("Invalid line number in `" + input + "`")
+            input[#2] in '0 .. '9 || die("Invalid line number in `" + input + "`")
+            sign := input[#1]
+            input := input[#2..-1]
         }
 
-        peekLineNb(input) && {
-            evalLineNb(&input, &context, processLine)
-            consumeExtra(&input)
+        var nth 1
+        until(():{nth > len(input) || input[#nth] !in '0 .. '9}, (_):{
+            nth += 1
+        })
+
+        var str tern(input == "", "", input[#1..<nth])
+        str <> "" || die("Invalid line number in `" + input + "`")
+        input := tern(nth > len(input), "", input[#nth..-1])
+        var nb parseInt(str)
+
+        ['sign:sign, 'nb:nb]
+    }
+
+    "handle anything else than gradual neg line nb"
+    var _interpretLineNb (_lineNb, OUT context, process):{
+        var sign _lineNb.sign
+        var nb _lineNb.nb
+        let i context.currLineNb
+
+        var lineEnd {
+            var lineEnd nb
+            sign == "-" && {lineEnd := convertNegLineNb(lineEnd, context)}
+            context.exclusiveRange? && {lineEnd -= 1}
+            sign == "+" && {lineEnd := i + lineEnd}
+            lineEnd
         }
 
-        peekStr(input, "..") && {
-            discard(&input, 2)
-            consumeExtra(&input)
-            context.succeedsRange? := $true
-            var case CaseAnalysis(Bool)
+        until(():{i == lineEnd}, (_):{
+            i += 1
+            var line getline()
+            line == $nil && die("Out of bounds: `" + sign + nb + {
+                tern(context.exclusiveRange?, "[", "") + "`"
+            })
 
-            case(peekLineNb(input), {
-                var lineNb consumeLineNb(&input)
+            "skip to first line number and process it"
+            not(context.succeedsRange?) && i == lineEnd && process(line)
+
+            "process all"
+            context.succeedsRange? && process(line)
+        })
+    }
+
+    var interpretLineNb _
+    interpretLineNb := (lineNb, OUT context, process):{
+        var gradualMode {
+            lineNb.sign == "-" && context.succeedsRange?
+        }
+        gradualMode && {
+            interpretNegLineNbGradually(lineNb, &context, process)
+        }
+        gradualMode || {
+            _interpretLineNb(lineNb, &context, process)
+        }
+        lineNb.sign == "-" && {
+            "gradual mode can't happen anymore => no longer need to check"
+            interpretLineNb := _interpretLineNb
+        }
+    }
+
+    var evalLineNb (OUT input, OUT context, process):{
+        var lineNb consumeLineNb(&input)
+        interpretLineNb(lineNb, &context, process)
+    }
+
+    var evalProgram _
+
+    var evalLines (OUT input, OUT context, processLine):{
+        do_while((1st_it?):{
+            1st_it? || {
+                discard(&input, 1) -- ","
                 consumeExtra(&input)
-                peekStr(input, "[") && {
-                    discard(&input, 1)
-                    consumeExtra(&input)
-                    context.exclusiveRange? := $true
-                }
-                interpretLineNb(lineNb, &context, processLine)
-                context.exclusiveRange? := $false
-            })
-
-            case(_, {
-                peekStr(input, "[") && {
-                    discard(&input, 1)
-                    consumeExtra(&input)
-                    context.exclusiveRange? := $true
-                }
-                "handle open end range"
-                interpretLineNb(['sign:"-", 'nb:1], &context, processLine)
-                context.exclusiveRange? := $false
-            })
-
-            context.succeedsRange? := $false
-        }
-    }, ():{peekStr(input, ",")})
-}
-
-var evalStackOp (OUT input, OUT context):{
-    var processLine (line):{
-        len(context.stacks) > 0 || die()
-        context.stacks[#-1] += [line]
-    }
-
-    discard(&input, 1) -- "s"
-    consumeExtra(&input)
-
-    do_while((1st_it?):{
-        1st_it? || {
-            discard(&input, 1) -- ","
-            consumeExtra(&input)
-            "make sure it's not a trailing comma"
-            peekLineNb(input) || peekStr(input, "..") || {
-                peekAny(input, "{(") || {
+                "make sure it's not a trailing comma"
+                peekLineNb(input) || peekStr(input, "..") || {
                     die("Trailing comma in `," + input + "`")
                 }
             }
-        }
-
-        var peek CaseAnalysis((c):{peekStr(input, c)})
-
-        peek("(", {
-            discard(&input, 1) -- "("
-
-            var groupedLines []
-            var processLine (line):{
-                groupedLines += [line]
-            }
-            evalLines(&input, &context, processLine)
-
-            peekStr(input, ")") || {
-                die("Missing closing parentheses in `" + input + "`")
-            }
-            discard(&input, 1) -- ")"
-
-            context.stacks[#-1] += [groupedLines]
-        })
-
-        peek("{", {
-            ; "TODO: will eval Program"
-        })
-
-        peek(_, {
-            var peekAny? $false
 
             peekLineNb(input) && {
-                peekAny? := $true
-
                 evalLineNb(&input, &context, processLine)
                 consumeExtra(&input)
             }
 
             peekStr(input, "..") && {
-                peekAny? := $true
-
                 discard(&input, 2)
                 consumeExtra(&input)
                 context.succeedsRange? := $true
@@ -324,26 +275,131 @@ var evalStackOp (OUT input, OUT context):{
 
                 context.succeedsRange? := $false
             }
+        }, ():{peekStr(input, ",")})
+    }
 
-            peekAny? || {
-                interpretLineNb(['sign:"+", 'nb:1], &context, processLine)
-            }
-        })
-    }, ():{peekStr(input, ",")})
-}
+    var evalStackOp (OUT input, OUT context):{
+        var processLine (line):{
+            len(context.stacks) > 0 || die()
+            context.stacks[#-1] += [line]
+        }
 
-var evalUnstackOp (OUT input, OUT context, processLine):{
-    discard(&input, 1) -- "S"
-    consumeExtra(&input)
-
-    len(context.stacks) > 0 || die()
-    let currStack context.stacks[#-1]
-    var peek CaseAnalysis((c):{peekStr(input, c)})
-
-    peek("*", {
-        discard(&input, 1) -- "*"
+        discard(&input, 1) -- "s"
         consumeExtra(&input)
-        until(():{len(currStack) == 0}, (_):{
+
+        do_while((1st_it?):{
+            1st_it? || {
+                discard(&input, 1) -- ","
+                consumeExtra(&input)
+                "make sure it's not a trailing comma"
+                peekLineNb(input) || peekStr(input, "..") || {
+                    peekAny(input, "{(") || {
+                        die("Trailing comma in `," + input + "`")
+                    }
+                }
+            }
+
+            var peek CaseAnalysis((c):{peekStr(input, c)})
+
+            peek("(", {
+                discard(&input, 1) -- "("
+
+                var groupedLines []
+                var processLine (line):{
+                    groupedLines += [line]
+                }
+                evalLines(&input, &context, processLine)
+
+                peekStr(input, ")") || {
+                    die("Missing closing parentheses in `" + input + "`")
+                }
+                discard(&input, 1) -- ")"
+
+                context.stacks[#-1] += [groupedLines]
+            })
+
+            peek("{", {
+                ; "TODO: will eval Program"
+            })
+
+            peek(_, {
+                var peekAny? $false
+
+                peekLineNb(input) && {
+                    peekAny? := $true
+
+                    evalLineNb(&input, &context, processLine)
+                    consumeExtra(&input)
+                }
+
+                peekStr(input, "..") && {
+                    peekAny? := $true
+
+                    discard(&input, 2)
+                    consumeExtra(&input)
+                    context.succeedsRange? := $true
+                    var case CaseAnalysis(Bool)
+
+                    case(peekLineNb(input), {
+                        var lineNb consumeLineNb(&input)
+                        consumeExtra(&input)
+                        peekStr(input, "[") && {
+                            discard(&input, 1)
+                            consumeExtra(&input)
+                            context.exclusiveRange? := $true
+                        }
+                        interpretLineNb(lineNb, &context, processLine)
+                        context.exclusiveRange? := $false
+                    })
+
+                    case(_, {
+                        peekStr(input, "[") && {
+                            discard(&input, 1)
+                            consumeExtra(&input)
+                            context.exclusiveRange? := $true
+                        }
+                        "handle open end range"
+                        interpretLineNb(['sign:"-", 'nb:1], &context, processLine)
+                        context.exclusiveRange? := $false
+                    })
+
+                    context.succeedsRange? := $false
+                }
+
+                peekAny? || {
+                    interpretLineNb(['sign:"+", 'nb:1], &context, processLine)
+                }
+            })
+        }, ():{peekStr(input, ",")})
+    }
+
+    var evalUnstackOp (OUT input, OUT context, processLine):{
+        discard(&input, 1) -- "S"
+        consumeExtra(&input)
+
+        len(context.stacks) > 0 || die()
+        let currStack context.stacks[#-1]
+        var peek CaseAnalysis((c):{peekStr(input, c)})
+
+        peek("*", {
+            discard(&input, 1) -- "*"
+            consumeExtra(&input)
+            until(():{len(currStack) == 0}, (_):{
+                $type(currStack[#-1]) == 'List && {
+                    foreach(currStack[#-1], processLine)
+                    ;
+                }
+                $type(currStack[#-1]) == 'Str && {
+                    processLine(currStack[#-1])
+                }
+                currStack := currStack[#1..<-1]
+            })
+        })
+
+        peek(_, {
+            len(currStack) > 0 || {
+                die("Unstacking an empty stack at `" + input + "`")
+            }
             $type(currStack[#-1]) == 'List && {
                 foreach(currStack[#-1], processLine)
                 ;
@@ -353,161 +409,163 @@ var evalUnstackOp (OUT input, OUT context, processLine):{
             }
             currStack := currStack[#1..<-1]
         })
-    })
-
-    peek(_, {
-        len(currStack) > 0 || {
-            die("Unstacking an empty stack at `" + input + "`")
-        }
-        $type(currStack[#-1]) == 'List && {
-            foreach(currStack[#-1], processLine)
-            ;
-        }
-        $type(currStack[#-1]) == 'Str && {
-            processLine(currStack[#-1])
-        }
-        currStack := currStack[#1..<-1]
-    })
-}
-
-var evalQueueOp (OUT input, OUT context):{
-    var processLine (line):{
-        len(context.queues) > 0 || die()
-        context.queues[#-1] += [line]
     }
 
-    discard(&input, 1) -- "q"
-    consumeExtra(&input)
-
-    do_while((1st_it?):{
-        1st_it? || {
-            discard(&input, 1) -- ","
-            consumeExtra(&input)
-            "make sure it's not a trailing comma"
-            peekLineNb(input) || peekStr(input, "..") || {
-                peekAny(input, "{(") || {
-                    die("Trailing comma in `," + input + "`")
-                }
-            }
+    var evalQueueOp (OUT input, OUT context):{
+        var processLine (line):{
+            len(context.queues) > 0 || die()
+            context.queues[#-1] += [line]
         }
 
+        discard(&input, 1) -- "q"
+        consumeExtra(&input)
+
+        do_while((1st_it?):{
+            1st_it? || {
+                discard(&input, 1) -- ","
+                consumeExtra(&input)
+                "make sure it's not a trailing comma"
+                peekLineNb(input) || peekStr(input, "..") || {
+                    peekAny(input, "{(") || {
+                        die("Trailing comma in `," + input + "`")
+                    }
+                }
+            }
+
+            var peek CaseAnalysis((c):{peekStr(input, c)})
+
+            peek("(", {
+                ; "TODO: will eval Lines"
+            })
+
+            peek("{", {
+                ; "TODO: will eval Program"
+            })
+
+            peek(_, {
+                var peekAny? $false
+
+                peekLineNb(input) && {
+                    peekAny? := $true
+
+                    evalLineNb(&input, &context, processLine)
+                    consumeExtra(&input)
+                }
+
+                peekStr(input, "..") && {
+                    peekAny? := $true
+
+                    discard(&input, 2)
+                    consumeExtra(&input)
+                    context.succeedsRange? := $true
+                    var case CaseAnalysis(Bool)
+
+                    case(peekLineNb(input), {
+                        var lineNb consumeLineNb(&input)
+                        consumeExtra(&input)
+                        peekStr(input, "[") && {
+                            discard(&input, 1)
+                            consumeExtra(&input)
+                            context.exclusiveRange? := $true
+                        }
+                        interpretLineNb(lineNb, &context, processLine)
+                        context.exclusiveRange? := $false
+                    })
+
+                    case(_, {
+                        peekStr(input, "[") && {
+                            discard(&input, 1)
+                            consumeExtra(&input)
+                            context.exclusiveRange? := $true
+                        }
+                        "handle open end range"
+                        interpretLineNb(['sign:"-", 'nb:1], &context, processLine)
+                        context.exclusiveRange? := $false
+                    })
+
+                    context.succeedsRange? := $false
+                }
+
+                peekAny? || {
+                    interpretLineNb(['sign:"+", 'nb:1], &context, processLine)
+                }
+            })
+        }, ():{peekStr(input, ",")})
+    }
+
+    var evalUnqueueOp (OUT input, OUT context, processLine):{
+        discard(&input, 1) -- "Q"
+        consumeExtra(&input)
+
+        len(context.queues) > 0 || die()
+        let currStack context.queues[#-1]
         var peek CaseAnalysis((c):{peekStr(input, c)})
 
-        peek("(", {
-            ; "TODO: will eval Lines"
-        })
-
-        peek("{", {
-            ; "TODO: will eval Program"
+        peek("*", {
+            discard(&input, 1) -- "*"
+            consumeExtra(&input)
+            until(():{len(currStack) == 0}, (_):{
+                processLine(currStack[#1])
+                currStack := tern(len(currStack) == 1, [], currStack[#2..-1])
+            })
         })
 
         peek(_, {
-            var peekAny? $false
-
-            peekLineNb(input) && {
-                peekAny? := $true
-
-                evalLineNb(&input, &context, processLine)
-                consumeExtra(&input)
+            len(currStack) > 0 || {
+                die("Unstacking an empty stack at `" + input + "`")
             }
-
-            peekStr(input, "..") && {
-                peekAny? := $true
-
-                discard(&input, 2)
-                consumeExtra(&input)
-                context.succeedsRange? := $true
-                var case CaseAnalysis(Bool)
-
-                case(peekLineNb(input), {
-                    var lineNb consumeLineNb(&input)
-                    consumeExtra(&input)
-                    peekStr(input, "[") && {
-                        discard(&input, 1)
-                        consumeExtra(&input)
-                        context.exclusiveRange? := $true
-                    }
-                    interpretLineNb(lineNb, &context, processLine)
-                    context.exclusiveRange? := $false
-                })
-
-                case(_, {
-                    peekStr(input, "[") && {
-                        discard(&input, 1)
-                        consumeExtra(&input)
-                        context.exclusiveRange? := $true
-                    }
-                    "handle open end range"
-                    interpretLineNb(['sign:"-", 'nb:1], &context, processLine)
-                    context.exclusiveRange? := $false
-                })
-
-                context.succeedsRange? := $false
-            }
-
-            peekAny? || {
-                interpretLineNb(['sign:"+", 'nb:1], &context, processLine)
-            }
-        })
-    }, ():{peekStr(input, ",")})
-}
-
-var evalUnqueueOp (OUT input, OUT context, processLine):{
-    discard(&input, 1) -- "Q"
-    consumeExtra(&input)
-
-    len(context.queues) > 0 || die()
-    let currStack context.queues[#-1]
-    var peek CaseAnalysis((c):{peekStr(input, c)})
-
-    peek("*", {
-        discard(&input, 1) -- "*"
-        consumeExtra(&input)
-        until(():{len(currStack) == 0}, (_):{
             processLine(currStack[#1])
             currStack := tern(len(currStack) == 1, [], currStack[#2..-1])
         })
-    })
+    }
 
-    peek(_, {
-        len(currStack) > 0 || {
-            die("Unstacking an empty stack at `" + input + "`")
-        }
-        processLine(currStack[#1])
-        currStack := tern(len(currStack) == 1, [], currStack[#2..-1])
-    })
-}
+    var evalCommand (OUT input, OUT context, processLine):{
+        var peek CaseAnalysis((c):{peekStr(input, c)})
 
-var evalCommand (OUT input, OUT context, processLine):{
-    var peek CaseAnalysis((c):{peekStr(input, c)})
+        peek("s", evalStackOp(&input, &context))
+        peek("S", evalUnstackOp(&input, &context, processLine))
+        peek("q", evalQueueOp(&input, &context))
+        peek("Q", evalUnqueueOp(&input, &context, processLine))
+        peek(_, {
+            var lines? peekLineNb(input)
+            lines? ||= peekStr(input, "..") || peekStr(input, "{")
+            lines? || die("Unknown operation in `" + input + "`")
+            evalLines(&input, &context, processLine)
+        })
+    }
 
-    peek("s", evalStackOp(&input, &context))
-    peek("S", evalUnstackOp(&input, &context, processLine))
-    peek("q", evalQueueOp(&input, &context))
-    peek("Q", evalUnqueueOp(&input, &context, processLine))
-    peek(_, {
-        var lines? peekLineNb(input)
-        lines? ||= peekStr(input, "..") || peekStr(input, "{")
-        lines? || die("Unknown operation in `" + input + "`")
-        evalLines(&input, &context, processLine)
-    })
-}
-
-evalProgram := (OUT input, OUT context, processLine):{
-    context.stacks += [[]]
-    context.queues += [[]]
-    consumeExtra(&input)
-    until(():{input == ""}, (1st_it?):{
-        not(1st_it?) && peekStr(input, ";") && {
-            discard(&input, 1)
-            consumeExtra(&input)
-        }
-        evalCommand(&input, &context, processLine)
+    evalProgram := (OUT input, OUT context, processLine):{
+        context.stacks += [[]]
+        context.queues += [[]]
         consumeExtra(&input)
-    })
-    context.stacks := context.stacks[#1..<-1]
-    context.queues := context.queues[#1..<-1]
-}
+        until(():{input == ""}, (1st_it?):{
+            not(1st_it?) && peekStr(input, ";") && {
+                discard(&input, 1)
+                consumeExtra(&input)
+            }
+            evalCommand(&input, &context, processLine)
+            consumeExtra(&input)
+        })
+        context.stacks := context.stacks[#1..<-1]
+        context.queues := context.queues[#1..<-1]
+    }
+
+    "now exporting local symbols"
+    var setup_and_call (fn):{
+        (varargs...):{
+            setup_rol() -- reset internal state
+            fn(varargs...)
+        }
+    }
+    rol::evalProgram := setup_and_call(evalProgram)
+    rol::evalCommand := setup_and_call(evalCommand)
+    rol::evalStackOp := setup_and_call(evalStackOp)
+    rol::evalUnstackOp := setup_and_call(evalUnstackOp)
+    rol::evalQueueOp := setup_and_call(evalQueueOp)
+    rol::evalUnqueueOp := setup_and_call(evalUnqueueOp)
+    rol::evalLines := setup_and_call(evalLines)
+    rol::evalLineNb := setup_and_call(evalLineNb)
+} -- "END of rol::"
 
 {
     var prog $args[#1]
@@ -520,6 +578,5 @@ evalProgram := (OUT input, OUT context, processLine):{
     ]
     var processLine print
 
-    evalProgram(prog, context, processLine)
+    rol::evalProgram(prog, context, processLine)
 }
-
