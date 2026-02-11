@@ -268,20 +268,21 @@ var rol::evalUnqueueOp _
 var rol::evalLines _
 var rol::evalLineNb _
 {
-    var builtin::getline getline
-    var getline getline -- make it overridable
-
+    var original::nextLine _
+    var nextLine _
     var convertNegLineNb _
     var interpretNegLineNbGradually _
-    var setup_rol ():{
+    var setup_rol (_nextLine):{
+        original::nextLine := tern(_nextLine == $nil, getline, _nextLine)
+        nextLine := tern(_nextLine == $nil, getline, _nextLine)
         var lines [] -- buffer
 
-        var slurp_stdin _
-        slurp_stdin := ():{
-            var line builtin::getline()
+        var slurp_input _
+        slurp_input := ():{
+            var line original::nextLine()
             line == $nil || {
                 lines += [line]
-                _ := slurp_stdin()
+                _ := slurp_input()
             }
         }
 
@@ -290,8 +291,8 @@ var rol::evalLineNb _
         convertNegLineNb := (nb, context):{
             1st_time_called? && {
                 i := context.currLineNb
-                slurp_stdin()
-                getline := ():{
+                slurp_input()
+                nextLine := ():{
                     tern(len(lines) == 0, $nil, {
                         var line lines[#1]
                         lines := tern(len(lines) == 1, [], lines[#2..-1])
@@ -304,7 +305,7 @@ var rol::evalLineNb _
             i + len(lines) - nb + 1
         }
 
-        interpretNegLineNbGradually := (_lineNb, OUT context, process):{
+        interpretNegLineNbGradually := (_lineNb, OUT context, processLine):{
             var sign _lineNb.sign
             var nb _lineNb.nb
             let i context.currLineNb
@@ -316,7 +317,7 @@ var rol::evalLineNb _
                 var loop _
                 loop := ():{
                     i > n || {
-                        var line builtin::getline()
+                        var line original::nextLine()
                         line == $nil || {
                             lines += [line]
                             i += 1
@@ -333,10 +334,10 @@ var rol::evalLineNb _
             {
                 var loop _
                 loop := ():{
-                    var line builtin::getline()
+                    var line original::nextLine()
                     line == $nil || {
                         lines += [line]
-                        process(lines[#1])
+                        processLine(lines[#1])
                         lines := tern(len(lines) == 1, [], lines[#2..-1])
                         i += 1
                         _ := loop()
@@ -345,9 +346,9 @@ var rol::evalLineNb _
                 loop()
             }
 
-            getline := ():{
+            nextLine := ():{
                 len(lines) == 0 && {
-                    var line builtin::getline()
+                    var line original::nextLine()
                     line == $nil || {lines += [line]}
                 }
                 tern(len(lines) == 0, $nil, {
@@ -400,7 +401,7 @@ var rol::evalLineNb _
     }
 
     "handle anything else than gradual neg line nb"
-    var _interpretLineNb (_lineNb, OUT context, process):{
+    var _interpretLineNb (_lineNb, OUT context, processLine):{
         var sign _lineNb.sign
         var nb _lineNb.nb
         let i context.currLineNb
@@ -415,29 +416,29 @@ var rol::evalLineNb _
 
         until(():{i == lineEnd}, (_):{
             i += 1
-            var line getline()
+            var line nextLine()
             line == $nil && die("Out of bounds: `" + sign + nb + {
                 tern(context.exclusiveRange?, "[", "") + "`"
             })
 
             "skip to first line number and process it"
-            not(context.succeedsRange?) && i == lineEnd && process(line)
+            not(context.succeedsRange?) && i == lineEnd && processLine(line)
 
             "process all"
-            context.succeedsRange? && process(line)
+            context.succeedsRange? && processLine(line)
         })
     }
 
     var interpretLineNb _
-    interpretLineNb := (lineNb, OUT context, process):{
+    interpretLineNb := (lineNb, OUT context, processLine):{
         var gradualMode {
             lineNb.sign == "-" && context.succeedsRange?
         }
         gradualMode && {
-            interpretNegLineNbGradually(lineNb, &context, process)
+            interpretNegLineNbGradually(lineNb, &context, processLine)
         }
         gradualMode || {
-            _interpretLineNb(lineNb, &context, process)
+            _interpretLineNb(lineNb, &context, processLine)
         }
         lineNb.sign == "-" && {
             "gradual mode can't happen anymore => no longer need to check"
@@ -445,9 +446,9 @@ var rol::evalLineNb _
         }
     }
 
-    var evalLineNb (OUT input, OUT context, process):{
+    var evalLineNb (OUT input, OUT context, processLine):{
         var lineNb consumeLineNb(&input)
-        interpretLineNb(lineNb, &context, process)
+        interpretLineNb(lineNb, &context, processLine)
     }
 
     var evalProgram _
@@ -776,9 +777,11 @@ var rol::evalLineNb _
 
     "now exporting local symbols"
     var setup_and_call (fn):{
-        (varargs...):{
-            setup_rol() -- reset internal state
-            fn(varargs...)
+        (nextLine):{
+            (varargs...):{
+                setup_rol(nextLine) -- reset internal state
+                fn(varargs...)
+            }
         }
     }
     rol::evalProgram := setup_and_call(evalProgram)
@@ -791,7 +794,42 @@ var rol::evalLineNb _
     rol::evalLineNb := setup_and_call(evalLineNb)
 } -- "END of rol::"
 "=== mlp: END src/rol.mlp (finally back to src/main.mlp) ======================"
-let evalProgram rol::evalProgram
+
+var nextLine {
+    var str ```
+        1
+        2
+        3
+        4
+        5
+    ```
+
+    var i 1
+    var nextLine ():{
+        tern(i > len(str), $nil, {
+            var line ""
+            var loop _
+            loop := ():{
+                i > len(str) || {
+                    str[#i] == "\n" || {
+                        line += str[#i]
+                        i += 1
+                        _ := loop()
+                    }
+                    i += 1 -- discard \n
+                }
+            }
+            loop()
+            line
+        })
+    }
+    nextLine
+}
+
+var evalProgram {
+    var nextLine getline -- toggle
+    rol::evalProgram(nextLine)
+}
 
 {
     var prog $args[#1]

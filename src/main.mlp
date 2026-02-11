@@ -1,7 +1,42 @@
 #!/usr/bin/env monlang
 
 include <rol.mlp>
-let evalProgram rol::evalProgram
+
+var nextLine {
+    var str ```
+        1
+        2
+        3
+        4
+        5
+    ```
+
+    var i 1
+    var nextLine ():{
+        tern(i > len(str), $nil, {
+            var line ""
+            var loop _
+            loop := ():{
+                i > len(str) || {
+                    str[#i] == "\n" || {
+                        line += str[#i]
+                        i += 1
+                        _ := loop()
+                    }
+                    i += 1 -- discard \n
+                }
+            }
+            loop()
+            line
+        })
+    }
+    nextLine
+}
+
+var evalProgram {
+    var nextLine getline -- toggle
+    rol::evalProgram(nextLine)
+}
 
 {
     var prog $args[#1]

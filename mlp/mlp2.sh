@@ -3,6 +3,7 @@ set -o errexit
 # set -o xtrace #debug
 
 # sophisticated mlp wrapper
+# BE CAREFUL WITH THAT
 
 CMD="$0${@:+ }$@"
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
@@ -40,6 +41,7 @@ function mlp1 {
     ((DRYRUN)) && { >&2 echo "MLP => ML"; exit 0; }
     mlp1 -o "$FILEOUT" "$FILEIN" $ARGS
     chmod +x "$FILEOUT"
+    exit
 }
 
 >/dev/null mlp1 diff -o "$FILEOUT" "$FILEIN" $ARGS || exit_code=$?
