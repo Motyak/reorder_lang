@@ -544,7 +544,20 @@ var rol::evalLineNb _
             })
 
             peek("{", {
-                ; "TODO: will eval Program"
+                discard(&input, 1) -- "{"
+
+                var lines []
+                var processLine (line):{
+                    lines += [line]
+                }
+                evalProgram(&input, &context, processLine)
+
+                peekStr(input, "}") || {
+                    die("Missing closing brace in `" + input + "`")
+                }
+                discard(&input, 1) -- "}"
+
+                context.stacks[#-1] += lines
             })
 
             peek(_, {
@@ -677,7 +690,20 @@ var rol::evalLineNb _
             })
 
             peek("{", {
-                ; "TODO: will eval Program"
+                discard(&input, 1) -- "{"
+
+                var lines []
+                var processLine (line):{
+                    lines += [line]
+                }
+                evalProgram(&input, &context, processLine)
+
+                peekStr(input, "}") || {
+                    die("Missing closing brace in `" + input + "`")
+                }
+                discard(&input, 1) -- "}"
+
+                context.queues[#-1] += lines
             })
 
             peek(_, {
@@ -743,14 +769,14 @@ var rol::evalLineNb _
             discard(&input, 1) -- "*"
             consumeExtra(&input)
             until(():{len(currQueue) == 0}, (_):{
-                $type(currQueue[#-1]) == 'List && {
-                    foreach(currQueue[#-1], processLine)
+                $type(currQueue[#1]) == 'List && {
+                    foreach(currQueue[#1], processLine)
                     ;
                 }
-                $type(currQueue[#-1]) == 'Str && {
-                    processLine(currQueue[#-1])
+                $type(currQueue[#1]) == 'Str && {
+                    processLine(currQueue[#1])
                 }
-                currQueue := currQueue[#1..<-1]
+                currQueue := tern(len(currQueue) == 1, [], currQueue[#2..-1])
             })
         })
 
@@ -758,14 +784,14 @@ var rol::evalLineNb _
             len(currQueue) > 0 || {
                 die("Unqueueing an empty queue at `" + input + "`")
             }
-            $type(currQueue[#-1]) == 'List && {
-                foreach(currQueue[#-1], processLine)
+            $type(currQueue[#1]) == 'List && {
+                foreach(currQueue[#1], processLine)
                 ;
             }
-            $type(currQueue[#-1]) == 'Str && {
-                processLine(currQueue[#-1])
+            $type(currQueue[#1]) == 'Str && {
+                processLine(currQueue[#1])
             }
-            currQueue := currQueue[#1..<-1]
+            currQueue := tern(len(currQueue) == 1, [], currQueue[#2..-1])
         })
     }
 
@@ -788,7 +814,7 @@ var rol::evalLineNb _
         context.stacks += [[]]
         context.queues += [[]]
         consumeExtra(&input)
-        until(():{input == ""}, (1st_it?):{
+        until(():{input == "" || input[#1] == "}"}, (1st_it?):{
             not(1st_it?) && peekStr(input, ";") && {
                 discard(&input, 1)
                 consumeExtra(&input)
