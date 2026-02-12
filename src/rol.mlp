@@ -239,42 +239,56 @@ var rol::evalLineNb _
                 }
             }
 
-            peekLineNb(input) && {
-                evalLineNb(&input, &context, processLine)
-                consumeExtra(&input)
-            }
+            var peek CaseAnalysis((c):{peekStr(input, c)})
+            peek("{", {
+                discard(&input, 1) -- "{"
 
-            peekStr(input, "..") && {
-                discard(&input, 2)
-                consumeExtra(&input)
-                context.succeedsRange? := $true
-                var case CaseAnalysis(Bool)
+                evalProgram(&input, &context, processLine)
 
-                case(peekLineNb(input), {
-                    var lineNb consumeLineNb(&input)
+                peekStr(input, "}") || {
+                    die("Missing closing brace in `" + input + "`")
+                }
+                discard(&input, 1) -- "}"
+            })
+
+            peek(_, {
+                peekLineNb(input) && {
+                    evalLineNb(&input, &context, processLine)
                     consumeExtra(&input)
-                    peekStr(input, "[") && {
-                        discard(&input, 1)
-                        consumeExtra(&input)
-                        context.exclusiveRange? := $true
-                    }
-                    interpretLineNb(lineNb, &context, processLine)
-                    context.exclusiveRange? := $false
-                })
+                }
 
-                case(_, {
-                    peekStr(input, "[") && {
-                        discard(&input, 1)
-                        consumeExtra(&input)
-                        context.exclusiveRange? := $true
-                    }
-                    "handle open end range"
-                    interpretLineNb(['sign:"-", 'nb:1], &context, processLine)
-                    context.exclusiveRange? := $false
-                })
+                peekStr(input, "..") && {
+                    discard(&input, 2)
+                    consumeExtra(&input)
+                    context.succeedsRange? := $true
+                    var case CaseAnalysis(Bool)
 
-                context.succeedsRange? := $false
-            }
+                    case(peekLineNb(input), {
+                        var lineNb consumeLineNb(&input)
+                        consumeExtra(&input)
+                        peekStr(input, "[") && {
+                            discard(&input, 1)
+                            consumeExtra(&input)
+                            context.exclusiveRange? := $true
+                        }
+                        interpretLineNb(lineNb, &context, processLine)
+                        context.exclusiveRange? := $false
+                    })
+
+                    case(_, {
+                        peekStr(input, "[") && {
+                            discard(&input, 1)
+                            consumeExtra(&input)
+                            context.exclusiveRange? := $true
+                        }
+                        "handle open end range"
+                        interpretLineNb(['sign:"-", 'nb:1], &context, processLine)
+                        context.exclusiveRange? := $false
+                    })
+
+                    context.succeedsRange? := $false
+                }
+            })
         }, ():{peekStr(input, ",")})
     }
 
