@@ -660,7 +660,20 @@ var rol::evalLineNb _
             var peek CaseAnalysis((c):{peekStr(input, c)})
 
             peek("(", {
-                ; "TODO: will eval Lines"
+                discard(&input, 1) -- "("
+
+                var groupedLines []
+                var processLine (line):{
+                    groupedLines += [line]
+                }
+                evalLines(&input, &context, processLine)
+
+                peekStr(input, ")") || {
+                    die("Missing closing parentheses in `" + input + "`")
+                }
+                discard(&input, 1) -- ")"
+
+                context.queues[#-1] += [groupedLines]
             })
 
             peek("{", {
@@ -723,24 +736,36 @@ var rol::evalLineNb _
         consumeExtra(&input)
 
         len(context.queues) > 0 || die()
-        let currStack context.queues[#-1]
+        let currQueue context.queues[#-1]
         var peek CaseAnalysis((c):{peekStr(input, c)})
 
         peek("*", {
             discard(&input, 1) -- "*"
             consumeExtra(&input)
-            until(():{len(currStack) == 0}, (_):{
-                processLine(currStack[#1])
-                currStack := tern(len(currStack) == 1, [], currStack[#2..-1])
+            until(():{len(currQueue) == 0}, (_):{
+                $type(currQueue[#-1]) == 'List && {
+                    foreach(currQueue[#-1], processLine)
+                    ;
+                }
+                $type(currQueue[#-1]) == 'Str && {
+                    processLine(currQueue[#-1])
+                }
+                currQueue := currQueue[#1..<-1]
             })
         })
 
         peek(_, {
-            len(currStack) > 0 || {
-                die("Unstacking an empty stack at `" + input + "`")
+            len(currQueue) > 0 || {
+                die("Unqueueing an empty queue at `" + input + "`")
             }
-            processLine(currStack[#1])
-            currStack := tern(len(currStack) == 1, [], currStack[#2..-1])
+            $type(currQueue[#-1]) == 'List && {
+                foreach(currQueue[#-1], processLine)
+                ;
+            }
+            $type(currQueue[#-1]) == 'Str && {
+                processLine(currQueue[#-1])
+            }
+            currQueue := currQueue[#1..<-1]
         })
     }
 
