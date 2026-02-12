@@ -468,7 +468,10 @@ var rol::evalLineNb _
             peek("{", {
                 discard(&input, 1) -- "{"
 
+                var backup context.subProgram?
+                context.subProgram? := $true
                 evalProgram(&input, &context, processLine)
+                context.subProgram? := backup
 
                 peekStr(input, "}") || {
                     die("Missing closing brace in `" + input + "`")
@@ -564,7 +567,10 @@ var rol::evalLineNb _
                 var processLine (line):{
                     lines += [line]
                 }
+                var backup context.subProgram?
+                context.subProgram? := $true
                 evalProgram(&input, &context, processLine)
+                context.subProgram? := backup
 
                 peekStr(input, "}") || {
                     die("Missing closing brace in `" + input + "`")
@@ -710,7 +716,10 @@ var rol::evalLineNb _
                 var processLine (line):{
                     lines += [line]
                 }
+                var backup context.subProgram?
+                context.subProgram? := $true
                 evalProgram(&input, &context, processLine)
+                context.subProgram? := backup
 
                 peekStr(input, "}") || {
                     die("Missing closing brace in `" + input + "`")
@@ -828,7 +837,7 @@ var rol::evalLineNb _
         context.stacks += [[]]
         context.queues += [[]]
         consumeExtra(&input)
-        until(():{input == "" || input[#1] == "}"}, (1st_it?):{
+        until(():{input == "" || context.subProgram? && input[#1] == "}"}, (1st_it?):{
             not(1st_it?) && peekStr(input, ";") && {
                 discard(&input, 1)
                 consumeExtra(&input)
@@ -902,6 +911,7 @@ var evalProgram {
         'currLineNb => 0
         'stacks => [] -- "stack of stacks (for nested programs)"
         'queues => [] -- "stack of queues (for nested programs)"
+        'subProgram? => $false
         'succeedsRange? => $false
         'exclusiveRange? => $false
     ]

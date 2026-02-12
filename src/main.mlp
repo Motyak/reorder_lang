@@ -44,6 +44,7 @@ var evalProgram {
         'currLineNb => 0
         'stacks => [] -- "stack of stacks (for nested programs)"
         'queues => [] -- "stack of queues (for nested programs)"
+        'subProgram? => $false
         'succeedsRange? => $false
         'exclusiveRange? => $false
     ]
