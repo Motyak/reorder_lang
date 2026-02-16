@@ -91,7 +91,7 @@ int main(int argc, char* argv[]) {
             std::unique_lock lock(state.mtx);
             
             // The "Reaction Time": Wait 50ms for a response
-            bool notified = state.cv_new_line.wait_for(lock, 50ms, [&] { 
+            bool notified = state.cv_new_line.wait_for(lock, 100ms, [&] {
                 return state.fifo_line.has_value() || !state.running; 
             });
 
