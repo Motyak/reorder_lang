@@ -10,6 +10,7 @@
 
     COMMAND := STACK-OP | UNSTACK-OP
             | QUEUE-OP | UNQUEUE-OP
+            | CARET-OP
             | LINES
 
     SUB-PROGRAM := '{' PROGRAM '}'
@@ -33,6 +34,8 @@
                 )?
 
     UNQUEUE-OP := 'Q' '*'?
+
+    CARET-OP := '^' (LINES | UNSTACK-OP | UNQUEUE-OP)?
 ```
 
 "=== mlp: BEGIN src/smallstd.mlp =============================================="
@@ -856,12 +859,13 @@ var rol::evalLineNb _
         })
     }
 
-    var evalCommand (OUT input, OUT context, processLine):{
-        var peek CaseAnalysis((c):{peekStr(input, c)})
+    var evalCaretOp (OUT input, OUT context):{
+        discard(&input, 1) -- "^"
+        consumeExtra(&input)
 
-        peek("s", evalStackOp(&input, &context))
+        var processLine context.rootProcessLine
+        var peek CaseAnalysis((c):{peekStr(input, c)})
         peek("S", evalUnstackOp(&input, &context, processLine))
-        peek("q", evalQueueOp(&input, &context))
         peek("Q", evalUnqueueOp(&input, &context, processLine))
         peek(_, {
             var lines? peekLineNb(input)
@@ -871,7 +875,26 @@ var rol::evalLineNb _
         })
     }
 
+    var evalCommand (OUT input, OUT context, processLine):{
+        var peek CaseAnalysis((c):{peekStr(input, c)})
+
+        peek("s", evalStackOp(&input, &context))
+        peek("S", evalUnstackOp(&input, &context, processLine))
+        peek("q", evalQueueOp(&input, &context))
+        peek("Q", evalUnqueueOp(&input, &context, processLine))
+        peek("^", evalCaretOp(&input, &context))
+        peek(_, {
+            var lines? peekLineNb(input)
+            lines? ||= peekStr(input, "..") || peekStr(input, "{")
+            lines? || die("Unknown operation in `" + input + "`")
+            evalLines(&input, &context, processLine)
+        })
+    }
+
     evalProgram := (OUT input, OUT context, processLine):{
+        context.subProgram? || {
+            context['rootProcessLine] := processLine
+        }
         context.stacks += [[]]
         context.queues += [[]]
         consumeExtra(&input)

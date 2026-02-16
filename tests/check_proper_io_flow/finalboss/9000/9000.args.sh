@@ -1,7 +1,7 @@
 # shellcheck shell=bash
 
-# # compact ver. (31 chars)
-# args=("s{ssS*}q{qs;5Qssq;9S*Q}QQQSQSQ*")
+# # compact ver. (29 chars)
+# args=("s{ssS*}q{qs^5^Qssq^9S*Q}SQSQ*")
 
 args=("$(cat <<'EOF'
 {
@@ -9,15 +9,14 @@ args=("$(cat <<'EOF'
     q{
         q3
         s4
-        5
-        Q -- 3
+        ^5
+        ^Q -- 3
         s6,7
         q8
-        9
+        ^9
         SSS -- 7, 6, 4
         Q -- 8
-    } -- [5, 3, 9, 7, 6, 4, 8]
-    QQQ -- 5, 3, 9
+    } -- [7, 6, 4, 8]
     S -- 1
     Q -- 7
     S -- 2
