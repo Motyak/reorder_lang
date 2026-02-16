@@ -137,14 +137,42 @@ var rol::evalLineNb _
     } -- "END of setup_rol"
 
 
-    var consumeExtra (OUT input):{
-        var extras "\n" + " " + Byte(9)
-        var nth 1
-        until(():{nth > len(input) || input[#nth] !in extras}, (_):{
-            nth += 1
-        })
-
-        input := tern(nth > len(input), "", input[#nth..-1])
+    var consumeExtra {
+        var whitespaces "\n" + " " + Byte(9)
+        var consumeWhitespaces (OUT input):{
+            var nth 1
+            until(():{nth > len(input) || input[#nth] !in whitespaces}, (_):{
+                nth += 1
+            })
+            input := tern(nth > len(input), "", input[#nth..-1])
+        }
+        var consumeComment (OUT input):{
+            var nth 1
+            var loop _
+            loop := ():{
+                nth > len(input) || {
+                    input[#nth] == "\n" || {
+                        nth += 1
+                        _ := loop()
+                    }
+                    nth += 1 -- \n
+                }
+            }
+            loop()
+            input := tern(nth > len(input), "", input[#nth..-1])
+        }
+        var consumeExtra (OUT input):{
+            var loop _
+            loop := ():{
+                consumeWhitespaces(&input)
+                peekStr(input, "--") && {
+                    consumeComment(&input)
+                    _ := loop()
+                }
+            }
+            loop()
+        }
+        consumeExtra
     }
 
     var peekLineNb (input):{
@@ -242,6 +270,7 @@ var rol::evalLineNb _
             var peek CaseAnalysis((c):{peekStr(input, c)})
             peek("{", {
                 discard(&input, 1) -- "{"
+                consumeExtra(&input)
 
                 var backup context.subProgram?
                 context.subProgram? := $true
@@ -252,6 +281,7 @@ var rol::evalLineNb _
                     die("Missing closing brace in `" + input + "`")
                 }
                 discard(&input, 1) -- "}"
+                consumeExtra(&input)
             })
 
             peek(_, {
@@ -320,6 +350,7 @@ var rol::evalLineNb _
 
             peek("(", {
                 discard(&input, 1) -- "("
+                consumeExtra(&input)
 
                 var groupedLines []
                 var processLine (line):{
@@ -331,12 +362,14 @@ var rol::evalLineNb _
                     die("Missing closing parentheses in `" + input + "`")
                 }
                 discard(&input, 1) -- ")"
+                consumeExtra(&input)
 
                 context.stacks[#-1] += [groupedLines]
             })
 
             peek("{", {
                 discard(&input, 1) -- "{"
+                consumeExtra(&input)
 
                 var lines []
                 var processLine (line):{
@@ -351,6 +384,7 @@ var rol::evalLineNb _
                     die("Missing closing brace in `" + input + "`")
                 }
                 discard(&input, 1) -- "}"
+                consumeExtra(&input)
 
                 context.stacks[#-1] += lines
             })
@@ -469,6 +503,7 @@ var rol::evalLineNb _
 
             peek("(", {
                 discard(&input, 1) -- "("
+                consumeExtra(&input)
 
                 var groupedLines []
                 var processLine (line):{
@@ -480,12 +515,14 @@ var rol::evalLineNb _
                     die("Missing closing parentheses in `" + input + "`")
                 }
                 discard(&input, 1) -- ")"
+                consumeExtra(&input)
 
                 context.queues[#-1] += [groupedLines]
             })
 
             peek("{", {
                 discard(&input, 1) -- "{"
+                consumeExtra(&input)
 
                 var lines []
                 var processLine (line):{
@@ -500,6 +537,7 @@ var rol::evalLineNb _
                     die("Missing closing brace in `" + input + "`")
                 }
                 discard(&input, 1) -- "}"
+                consumeExtra(&input)
 
                 context.queues[#-1] += lines
             })
