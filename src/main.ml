@@ -376,17 +376,11 @@ var rol::evalLineNb _
         }
         var consumeComment (OUT input):{
             var nth 1
-            var loop _
-            loop := ():{
-                nth > len(input) || {
-                    input[#nth] == "\n" || {
-                        nth += 1
-                        _ := loop()
-                    }
-                    nth += 1 -- \n
-                }
-            }
-            loop()
+            var end $false
+            until(():{end || nth > len(input)}, (_):{
+                input[#nth] == "\n" && {end := $true}
+                nth += 1
+            })
             input := tern(nth > len(input), "", input[#nth..-1])
         }
         var consumeExtra (OUT input):{
