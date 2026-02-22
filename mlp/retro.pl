@@ -48,10 +48,10 @@ unless (@INCLUDE_PATH) {
 
 sub short_name {
     my ($dirs, $included_file) = @_;
-    (my $dirname = $included_file) =~ s/^([^\/]+)\//$1/ or die();
+    (my $dirname = $included_file) =~ s/^([^\/]+)\//$1/ or die;
 
     foreach my $dir (@$dirs) {
-        (my $basename = $dir) =~ s/\/*([^\/]+)\/*$/$1/ or die();
+        (my $basename = $dir) =~ s/\/*([^\/]+)\/*$/$1/ or die;
         if ($included_file =~ /^\Q${basename}\E\/(.*)/) {
             return $1;
         }
@@ -91,7 +91,7 @@ while (my $line = <$fh>) {
 
     elsif ($line =~ /^"=== mlp: END /) {
         pop(@curr_file_stack);
-        @curr_file_stack or die();
+        @curr_file_stack or die;
         $curr_file = $curr_file_stack[-1]
     }
 

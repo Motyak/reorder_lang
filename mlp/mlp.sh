@@ -57,7 +57,7 @@ fi
 ((DIFFMODE)) && {
     # make sure we have no script error before doing the git diff
     >/dev/null preprocess "$FILEIN" $ARGS || exit 2
-    [ -f "$FILEOUT" ] || exit 3
+    [ -f "$FILEOUT" ] || exit 2
     exit_code=0
     git diff --no-index --no-prefix <(preprocess "$FILEIN" $ARGS) <(cat "$FILEOUT") || {
         exit_code=$?
@@ -69,10 +69,10 @@ fi
 # ..to both input and output file (also: see 'retro')
 [ -f "$FILEOUT" ] && [ "$FILEOUT" -nt "$FILEIN" ] && {
     # protection against losing data
-    >&2 echo "Output file has been updated, are you sure you want to overwrite it ?"
+    >&2 echo "Output file has been updated, are you sure you want to overwrite it?"
     >&2 echo -n "confirm?(Y/n) >"
     read confirm
-    [[ "$confirm" =~ n|N ]] && { >&2 echo "aborted"; exit 0; }
+    [[ "$confirm" =~ n|N ]] && { >&2 echo "aborted"; exit 2; }
 }
 
 preprocess "$FILEIN" $ARGS > "$FILEOUT"
