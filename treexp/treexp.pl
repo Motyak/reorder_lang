@@ -40,6 +40,11 @@ sub OPEN_FILE_ERR {
     ERR("Could not open file `$file`: $open_err");
 }
 
+sub CHMOD_X_ERR {
+    my ($file, $chmod_x_err) = @_;
+    ERR("Could not chmod +x file `$file`: $chmod_x_err");
+}
+
 sub treexp {
     my ($dir, $out_fh, $cwd) = @_;
     state $first_file = true;
@@ -75,7 +80,7 @@ sub treexp {
             my $content = "";
             my $nb_of_lines = 0;
             while (my $line = <$fh>) {
-                $content .= $line;
+                $content .= "\t$line";
                 $nb_of_lines += 1;
             }
             close $fh;
@@ -88,11 +93,11 @@ sub treexp {
                 print $out_fh " +x";
             }
             print $out_fh " $nb_of_lines";
-            if (length($content) != 0 && substr($content, -1) ne "\n") {
-                print $out_fh "*\n$content\n";
+            if ($content =~ /\n$/) {
+                print $out_fh "\n$content";
             }
             else {
-                print $out_fh "\n$content";
+                print $out_fh "*\n$content\n";
             }
             $first_file = false;
         }
@@ -144,15 +149,17 @@ sub buildtree {
             for my $nth (1 .. $nb_of_lines) {
                 my $line = <$input_fh>;
                 defined $line or ERR("Hit EOF before reaching nb of lines");
-                # special handling for last line
+                $line =~ s/^\t// or die; # remove leading \t
                 if ($nth == $nb_of_lines && !$has_trailing_nl) {
-                    print $out_fh substr($line, 0, -1); # remove trailing newline
+                    $line =~ s/\n$// or die; # remove trailing \n
                 }
-                else {
-                    print $out_fh $line;
-                }
+                print $out_fh $line;
             }
             close $out_fh;
+
+            if ($is_executable) {
+                chmod 0755, $textfile or CHMOD_X_ERR($textfile, $!); # <=> chmod +x
+            }
         }
 
         elsif ($line =~ /\s*/) {
