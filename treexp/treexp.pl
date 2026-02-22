@@ -55,7 +55,7 @@ sub treexp {
     closedir($dh);
 
     foreach my $file (@files) {
-        next if $file eq "." || $file eq "..";
+        next if $file eq "." || $file eq ".." || $file eq ".git";
         my $filepath = "$dir/$file";
 
         # symlink
