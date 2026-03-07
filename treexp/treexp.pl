@@ -7,22 +7,13 @@ use constant true => 1;
 use constant false => 0;
 # use constant _ => undef;
 
+use utf8; # required for embedded
 use File::Path; # make_path, remove_tree
 
 sub ERR {
     my ($msg) = @_;
     print STDERR "$msg\n";
     exit 1;
-}
-
-sub prompt_confirm {
-    my ($msg) = @_;
-    print STDERR "$msg\nConfirm?(Y/n) >";
-    my $confirm = <STDIN>;
-    if ($confirm =~ /n|N/) {
-        print STDERR "Aborted\n";
-        exit 2;
-    }
 }
 
 sub CD_DIR_ERR {
@@ -45,10 +36,20 @@ sub CHMOD_X_ERR {
     ERR("Could not chmod +x file `$file`: $chmod_x_err");
 }
 
+sub prompt_confirm {
+    my ($msg) = @_;
+    print STDERR "$msg\nConfirm?(Y/n) >";
+    my $confirm = <STDIN>;
+    if ($confirm =~ /n|N/) {
+        print STDERR "Aborted\n";
+        exit 2;
+    }
+}
+
 sub treexp {
     my ($dir, $out_fh, $cwd) = @_;
-    state $first_file = true;
     $cwd //= "."; # basically if parent treexp() call (<> recursive call)
+    state $first_file = true;
 
     opendir(my $dh, $dir) or OPEN_DIR_ERR($dir, $!);
     my @files = sort readdir($dh);
@@ -163,7 +164,7 @@ sub buildtree {
         }
 
         elsif ($line =~ /\s*/) {
-            ; # nothing to do
+            ; # skip them
         }
 
         else {
@@ -172,7 +173,24 @@ sub buildtree {
     }
 }
 
-@ARGV or ERR("Missing input argument");
+# special case for embedded file
+if (! @ARGV) {
+    my ($out_dir) = __FILE__ =~ /(\S*[^\/\s])\.\w+$/ or ERR("Script file has no file extension");
+    if (-e $out_dir) {
+        if (-d $out_dir) {
+            prompt_confirm("Output dir `$out_dir` already exists, are you sure you want to nuke it?");
+            File::Path::remove_tree($out_dir); # <=> rm -rf
+        }
+        else {
+            prompt_confirm("Output file `$out_dir` already exists, are you sure you want to nuke it?");
+            unlink $out_dir; # <=> rm # doesn't work on non-empty dirs
+        }
+    }
+
+    buildtree(*DATA, $out_dir);
+}
+
+@ARGV or exit;
 my $ARG = shift @ARGV;
 -e $ARG or ERR("`$ARG` do not exist");
 
@@ -209,7 +227,7 @@ elsif (-f $ARG) {
         }
         else {
             prompt_confirm("Output file `$out_dir` already exists, are you sure you want to nuke it?");
-            unlink $out_dir; # <=> rm # doesn't work on dirs
+            unlink $out_dir; # <=> rm # doesn't work on non-empty dirs
         }
     }
 
@@ -221,3 +239,5 @@ elsif (-f $ARG) {
 else {
     ERR("Arg should be either a dir (for exporting) or a file (for building)");
 }
+
+__DATA__
