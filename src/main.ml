@@ -15,7 +15,7 @@
 
     SUB-PROGRAM := '{' PROGRAM '}'
     LINES := (LINE-NB | RANGE | SUB-PROGRAM)
-        | (LINE-NB | RANGE | SUB-PROGRAM) ',' LINES
+             (',' (LINE-NB | RANGE | SUB-PROGRAM))*
     GROUPED-LINES := '(' LINES ')'
 
     RANGE := LINE-NB? '..' LINE-NB? '['?
